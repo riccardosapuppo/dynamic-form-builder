@@ -1,3 +1,6 @@
+import type { Form } from '../flatten/attributes.ts';
+import type { Question } from '../form/kinds.ts';
+
 /**
  * The forms, invented, and the only truth in this project.
  *
@@ -226,8 +229,8 @@ export const AWKWARD = {
  */
 export const INTAKE_V2_RENAMED = renameIn(INTAKE_V2, 'Anything else', 'Other notes');
 
-function renameIn(form, from, to) {
-  const walk = (elements) =>
+function renameIn(form: Form, from: string, to: string): Form {
+  const walk = (elements: Question[]): Question[] =>
     elements.map((one) =>
       one.elements
         ? { ...one, elements: walk(one.elements) }
@@ -236,7 +239,10 @@ function renameIn(form, from, to) {
           : one
     );
 
-  return { ...form, pages: form.pages.map((page) => ({ ...page, elements: walk(page.elements) })) };
+  return {
+    ...form,
+    pages: (form.pages ?? []).map((page) => ({ ...page, elements: walk(page.elements ?? []) })),
+  };
 }
 
 /**
@@ -252,17 +258,20 @@ function renameIn(form, from, to) {
  * all — which is most questions, most of the time, and is why so many forms in
  * the world do not have one.
  */
-export function withIds(form, renames = {}) {
-  const idFor = (name) => `q.${String(renames[name] ?? name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+export function withIds(form: Form, renames: Record<string, string> = {}): Form {
+  const idFor = (name: unknown): string => `q.${String(renames[String(name)] ?? name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
 
-  const walk = (elements) =>
+  const walk = (elements: Question[]): Question[] =>
     elements.map((one) =>
       one.elements && one.kind === 'panel'
         ? { ...one, elements: walk(one.elements) }
         : { ...one, id: idFor(one.name) }
     );
 
-  return { ...form, pages: form.pages.map((page) => ({ ...page, elements: walk(page.elements) })) };
+  return {
+    ...form,
+    pages: (form.pages ?? []).map((page) => ({ ...page, elements: walk(page.elements ?? []) })),
+  };
 }
 
 /** Version 1, with ids. */

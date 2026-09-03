@@ -19,9 +19,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { buildWorlds, closeWorlds } from '../src/measure/worlds.js';
-import { measure, tally, QUESTIONS } from '../src/measure/questions.js';
-import { averageWeight, howMany, straysGiven, wroteNotes } from '../src/measure/truth.js';
+import { buildWorlds, closeWorlds } from '../src/measure/worlds.ts';
+import { measure, tally, QUESTIONS } from '../src/measure/questions.ts';
+import type { Which } from '../src/measure/questions.ts';
+import type { FlatWorld } from '../src/measure/worlds.ts';
+import { averageWeight, howMany, straysGiven, wroteNotes } from '../src/measure/truth.ts';
 
 /** One set of worlds, built once — they are identical every time by construction. */
 const worlds = buildWorlds();
@@ -30,7 +32,8 @@ const counts = tally(rows);
 
 test.after(() => closeWorlds(worlds));
 
-const row = (fragment) => rows.find((one) => one.asks.includes(fragment));
+/** One row by a fragment of its question. The `!` is the test knowing it is there. */
+const row = (fragment: string) => rows.find((one) => one.asks.includes(fragment))!;
 
 test('the claim: the flattened store with ids gets every question right', () => {
   const wrong = rows.filter((one) => one.flatWithIds.verdict !== 'right');
@@ -51,7 +54,7 @@ test('the three stores are asked the same questions, and there are enough of the
 });
 
 test('the truth is computed without touching either store', () => {
-  const source = readFileSync(new URL('../src/measure/truth.js', import.meta.url), 'utf8');
+  const source = readFileSync(new URL('../src/measure/truth.ts', import.meta.url), 'utf8');
 
   // What it IMPORTS, not what it mentions.
   //
@@ -65,7 +68,7 @@ test('the truth is computed without touching either store', () => {
     .filter((one) => one.startsWith('import '))
     .map((one) => one.split("'")[1] ?? one.split('"')[1]);
 
-  assert.deepEqual(imports, ['../fixtures/submissions.js'], 'the fixtures, and nothing else');
+  assert.deepEqual(imports, ['../fixtures/submissions.ts'], 'the fixtures, and nothing else');
 
   const code = lines.filter((one) => !one.startsWith('*') && !one.startsWith('/*') && !one.startsWith('//'));
 
@@ -108,7 +111,7 @@ test('the pile of documents cannot express three of the questions at all', () =>
     const said = row(which).documents;
 
     assert.equal(said.verdict, 'cannot', which);
-    assert.ok(said.why.length > 40, 'and says what is missing rather than erroring');
+    assert.ok((said.why ?? '').length > 40, 'and says what is missing rather than erroring');
   }
 });
 
@@ -146,9 +149,11 @@ test('the three stores are given identical input', () => {
 test('the two flattened worlds differ only by the ids in the definitions', () => {
   // If they differed anywhere else, the row above would be measuring something
   // other than what it claims to measure.
-  const columns = (world) =>
+  const columns = (world: FlatWorld): string[] =>
     world.kept
-      .run('SELECT name FROM attributes WHERE form_id = ? ORDER BY name', [world.formId])
+      .run<{ name: string }>('SELECT name FROM attributes WHERE form_id = ? ORDER BY name', [
+        world.formId,
+      ])
       .map((r) => r.name);
 
   const without = columns(worlds.flat);
@@ -164,7 +169,7 @@ test('the two flattened worlds differ only by the ids in the definitions', () =>
 });
 
 test('the tallies add up to the number of questions, for every store', () => {
-  for (const which of Object.keys(counts)) {
+  for (const which of Object.keys(counts) as Which[]) {
     const c = counts[which];
     assert.equal(c.right + c.wrong + c.cannot, rows.length, which);
   }

@@ -20,9 +20,9 @@
  * asked to preserve.
  */
 
-import { SUBMISSIONS } from '../fixtures/submissions.js';
+import { SUBMISSIONS } from '../fixtures/submissions.ts';
 
-const answered = (value) => value !== undefined && value !== null && String(value).trim() !== '';
+const answered = (value: unknown): boolean => value !== undefined && value !== null && String(value).trim() !== '';
 
 /**
  * How many people wrote something in the free-text notes.
@@ -36,19 +36,19 @@ export function wroteNotes() {
 }
 
 /** The mean weight, over everybody who gave one. */
-export function averageWeight() {
+export function averageWeight(): { average: number | null; of: number } {
   const weights = SUBMISSIONS.map((one) => one.truth.weight);
   return { average: weights.reduce((a, b) => a + b, 0) / weights.length, of: weights.length };
 }
 
 /** The mean age, which nothing renamed and nothing should get wrong. */
-export function averageAge() {
+export function averageAge(): { average: number | null; of: number } {
   const ages = SUBMISSIONS.map((one) => one.truth.age);
   return { average: ages.reduce((a, b) => a + b, 0) / ages.length, of: ages.length };
 }
 
 /** How many ticked one condition. */
-export function ticked(choice) {
+export function ticked(choice: string): number {
   return SUBMISSIONS.filter((one) => one.truth.conditions.includes(choice)).length;
 }
 
@@ -61,7 +61,7 @@ export function ticked(choice) {
  * who filled in the form. Thirteen per cent or seven — one of those is a
  * finding and the other is an artefact of when the question was added.
  */
-export function offered(choice) {
+export function offered(choice: string): number {
   return SUBMISSIONS.filter((one) => (choice === 'coeliac' ? one.onV2 : true)).length;
 }
 

@@ -25,14 +25,15 @@
 
 import fs from 'node:fs';
 import http from 'node:http';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { flatten } from '../flatten/attributes.js';
-import { store } from '../store/db.js';
-import { measure, tally } from '../measure/questions.js';
-import { buildWorlds } from '../measure/worlds.js';
-import { whatCanBeAsked, whatCouldNotBePlaced, howAnswersWereMatched } from '../answers/ask.js';
+import { flatten } from '../flatten/attributes.ts';
+import { store } from '../store/db.ts';
+import { measure, tally } from '../measure/questions.ts';
+import { buildWorlds } from '../measure/worlds.ts';
+import { whatCanBeAsked, whatCouldNotBePlaced, howAnswersWereMatched } from '../answers/ask.ts';
 import {
   AWKWARD,
   INTAKE_V1,
@@ -40,12 +41,12 @@ import {
   INTAKE_V2,
   INTAKE_V2_IDS,
   INTAKE_V2_RENAMED,
-} from '../fixtures/forms.js';
+} from '../fixtures/forms.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(here, '..', '..', 'public');
 
-const TYPES = {
+const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -148,7 +149,9 @@ function theMeasurement() {
   };
 }
 
-export function service({ log = () => {} } = {}) {
+export type Log = (level: string, message: string, detail?: Record<string, unknown>) => void;
+
+export function service({ log = () => {} }: { log?: Log } = {}) {
   const measured = theMeasurement();
 
   /**
@@ -164,18 +167,20 @@ export function service({ log = () => {} } = {}) {
   function fresh() {
     const kept = store();
     const first = kept.save(FORM, INTAKE_V1, { note: 'as first built', at: '2026-01-10' });
-    return { kept, formId: first.formId, versions: [first], filled: [] };
+    return { kept, formId: first.formId, versions: [first], filled: [] as number[] };
   }
 
   const server = http.createServer((request, response) => {
-    const at = new URL(request.url, 'http://127.0.0.1');
+    const at = new URL(request.url ?? '/', 'http://127.0.0.1');
 
     try {
       if (at.pathname.startsWith('/api/')) return api(at, request, response);
       return serve(at, response);
     } catch (error) {
-      log('error', 'the request could not be handled', { where: at.pathname, why: error.message });
-      json(response, 500, { error: error.message });
+      const why = error instanceof Error ? error.message : String(error);
+
+      log('error', 'the request could not be handled', { where: at.pathname, why });
+      json(response, 500, { error: why });
     }
   });
 
@@ -183,7 +188,7 @@ export function service({ log = () => {} } = {}) {
 
   // -------------------------------------------------------------------------
 
-  function api(at, request, response) {
+  function api(at: URL, request: IncomingMessage, response: ServerResponse): void {
     if (at.pathname === '/api/health') {
       return json(response, 200, {
         ok: true,
@@ -212,7 +217,7 @@ export function service({ log = () => {} } = {}) {
       return json(response, 405, { error: 'that route wants a POST', you_used: request.method });
     }
 
-    return body(request, (sent, why) => {
+    return body(request, (sent: Record<string, unknown> | null, why?: string) => {
       if (why) return json(response, 400, { error: why });
 
       /**
@@ -255,10 +260,15 @@ export function service({ log = () => {} } = {}) {
       if (at.pathname === '/api/fill') {
         const version = live.versions[live.versions.length - 1];
 
-        const said = live.kept.fill(live.formId, version.versionId, sent?.answers ?? {}, {
-          at: '2026-04-01',
-          reference: `C${1000 + live.filled.length}`,
-        });
+        const said = live.kept.fill(
+          live.formId,
+          version!.versionId,
+          (sent?.answers ?? {}) as Record<string, unknown>,
+          {
+            at: '2026-04-01',
+            reference: `C${1000 + live.filled.length}`,
+          }
+        );
 
         const landed = live.kept.run(
           `SELECT t.name AS column_name, a.matched,
@@ -299,12 +309,16 @@ export function service({ log = () => {} } = {}) {
        * something nobody asked about.
        */
       definition: JSON.parse(
-        live.kept.run('SELECT definition FROM versions WHERE id = ?', [current.versionId])[0].definition
+        live.kept.run<{ definition: string }>('SELECT definition FROM versions WHERE id = ?', [
+          current.versionId,
+        ])[0]!.definition
       ),
 
       versions: live.versions.map((one, at) => ({
         number: one.number,
-        note: one.note ?? '',
+        // `note` is what the caller passed to save(); the report does not carry
+        // it back, so the page shows the version number instead of inventing one.
+        note: '',
         added: one.added,
         renamed: one.renamed,
         gone: one.gone,
@@ -343,11 +357,14 @@ export function service({ log = () => {} } = {}) {
  * mistake or somebody being interesting, and a server that buffers whatever
  * arrives is a server that can be stopped by one request.
  */
-function body(request, then) {
-  const parts = [];
+function body(
+  request: IncomingMessage,
+  then: (sent: Record<string, unknown> | null, why?: string) => void
+): void {
+  const parts: Buffer[] = [];
   let size = 0;
 
-  request.on('data', (chunk) => {
+  request.on('data', (chunk: Buffer) => {
     size += chunk.length;
 
     if (size > 1_000_000) {
@@ -364,7 +381,8 @@ function body(request, then) {
     try {
       then(parts.length ? JSON.parse(Buffer.concat(parts).toString('utf8')) : {});
     } catch (error) {
-      then(null, `that is not JSON: ${error.message}`);
+      const why = error instanceof Error ? error.message : String(error);
+      then(null, `that is not JSON: ${why}`);
     }
   });
 }
@@ -377,7 +395,7 @@ function body(request, then) {
  * so somebody who ran a different project on this port has that project's
  * answers in the same drawer.
  */
-function serve(at, response) {
+function serve(at: URL, response: ServerResponse): void {
   const name = at.pathname === '/' ? 'index.html' : at.pathname.slice(1);
   const file = path.join(PUBLIC, name);
 
@@ -401,7 +419,7 @@ function serve(at, response) {
   response.end(fs.readFileSync(file));
 }
 
-function json(response, status, sent) {
+function json(response: ServerResponse, status: number, sent: unknown): void {
   response.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': 'no-store',

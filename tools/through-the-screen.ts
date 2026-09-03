@@ -24,15 +24,15 @@
  * green having driven a stranger's process.
  */
 
-import { aBrowser } from './a-browser.mjs';
-import { startTheService } from './with-the-service.mjs';
+import { aBrowser } from './a-browser.ts';
+import { startTheService } from './with-the-service.ts';
 
 const show = process.argv.includes('--show');
 
 let checks = 0;
 let bad = 0;
 
-function is(what, got, wanted, detail) {
+function is(what: string, got: unknown, wanted: unknown, detail?: unknown): void {
   checks += 1;
 
   if (got === wanted) return console.log(`    ok    ${what}`);
@@ -41,7 +41,7 @@ function is(what, got, wanted, detail) {
   console.log(`    NO    ${what}\n            wanted ${JSON.stringify(wanted)}, got ${JSON.stringify(detail ?? got)}`);
 }
 
-function has(what, got, wanted) {
+function has(what: string, got: unknown, wanted: unknown): void {
   checks += 1;
 
   if (String(got ?? '').toLowerCase().includes(String(wanted).toLowerCase())) {
@@ -52,7 +52,7 @@ function has(what, got, wanted) {
   console.log(`    NO    ${what}\n            wanted something containing ${JSON.stringify(wanted)}, got ${JSON.stringify(got)}`);
 }
 
-const say = (what) => console.log(`\n  ${what}`);
+const say = (what: string): void => console.log(`\n  ${what}`);
 
 const service = await startTheService();
 const { browser, channel } = await aBrowser({ headless: !show });
@@ -61,13 +61,13 @@ const page = await browser.newPage({ viewport: { width: 1500, height: 1200 }, re
 // Anything the page throws fails this even if every assertion passes: a screen
 // that works while quietly throwing is a screen that stops working on the next
 // browser.
-const thrown = [];
-page.on('pageerror', (error) => thrown.push(`threw: ${error.message}`));
-page.on('console', (message) => {
+const thrown: string[] = [];
+page.on('pageerror', (error: Error) => thrown.push(`threw: ${error.message}`));
+page.on('console', (message: { type(): string; text(): string }) => {
   if (message.type() === 'error') thrown.push(message.text());
 });
 
-const tally = (which) => page.locator(which).textContent();
+const tally = (which: string) => page.locator(which).textContent();
 
 /** Wait for the flattening to have caught up with the editor. */
 const settled = () => page.waitForTimeout(450);
@@ -87,7 +87,8 @@ async function resetAndWait() {
   await page.locator('[data-reset]').click();
 
   await page.waitForFunction(
-    (was) => document.querySelector('[data-changes]').dataset.drawn !== was,
+    (was: string | null) =>
+      (document.querySelector('[data-changes]') as HTMLElement).dataset.drawn !== was,
     before,
     { timeout: 10_000 }
   );
@@ -99,7 +100,8 @@ async function saveAndWait() {
   await page.locator('[data-save]').click();
 
   await page.waitForFunction(
-    (was) => document.querySelector('[data-changes]').dataset.drawn !== was,
+    (was: string | null) =>
+      (document.querySelector('[data-changes]') as HTMLElement).dataset.drawn !== was,
     before,
     { timeout: 10_000 }
   );
@@ -158,7 +160,7 @@ try {
   const before = await page.locator('[data-columns] tbody tr').count();
 
   await page.evaluate(() => {
-    const editor = document.querySelector('[data-editor]');
+    const editor = document.querySelector('[data-editor]') as HTMLTextAreaElement;
     const definition = JSON.parse(editor.value);
 
     definition.pages[0].elements.push({ kind: 'text', name: 'Something new' });
@@ -195,7 +197,7 @@ try {
   say('a half-typed definition');
 
   await page.evaluate(() => {
-    const editor = document.querySelector('[data-editor]');
+    const editor = document.querySelector('[data-editor]') as HTMLTextAreaElement;
     editor.value = '{ "pages": [';
     editor.dispatchEvent(new Event('input', { bubbles: true }));
   });
@@ -257,9 +259,13 @@ try {
 
   await page.locator('[data-stray]').click();
   await page.locator('[data-fill]').click();
-  await page.waitForFunction(() => document.querySelector('[data-landed] tbody').children.length > 0, null, {
-    timeout: 10_000,
-  });
+  await page.waitForFunction(
+    () => (document.querySelector('[data-landed] tbody')?.children.length ?? 0) > 0,
+    null,
+    {
+      timeout: 10_000,
+    }
+  );
 
   const landed = await page.locator('[data-landed]').textContent();
 

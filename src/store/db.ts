@@ -36,132 +36,73 @@
  * project exists to make visible.
  */
 
+import { readFileSync } from 'node:fs';
+
 import { DatabaseSync } from 'node:sqlite';
+import type { SQLInputValue } from 'node:sqlite';
 
-import { flatten } from '../flatten/attributes.js';
-import { whatChanged } from '../flatten/identity.js';
-import { index } from '../flatten/match.js';
-import { readAs } from '../form/kinds.js';
+import type { Attribute, Form } from '../flatten/attributes.ts';
+import type { KnownAttribute } from '../flatten/identity.ts';
 
-const SCHEMA = `
-  CREATE TABLE forms (
-    id       INTEGER PRIMARY KEY,
-    name     TEXT NOT NULL UNIQUE
-  );
+export type Store = ReturnType<typeof store>;
 
-  CREATE TABLE versions (
-    id          INTEGER PRIMARY KEY,
-    form_id     INTEGER NOT NULL REFERENCES forms(id),
-    number      INTEGER NOT NULL,
-    saved_at    TEXT NOT NULL,
-    note        TEXT,
-    -- The definition, kept whole. It is a tree and it belongs as one: this
-    -- column is what the form was, and the tables beside it are what can be
-    -- asked about it. Neither replaces the other.
-    definition  TEXT NOT NULL,
-    UNIQUE (form_id, number)
-  );
+export type Saved = {
+  formId: number;
+  versionId: number;
+  number: number;
+  added: string[];
+  renamed: Array<{ was: string; now: string; question: string; how: string }>;
+  same: string[];
+  gone: string[];
+  doesNotFit: unknown[];
+  trouble: string[];
+};
 
-  -- Against the FORM, not the version. See the note at the top of this file.
-  CREATE TABLE attributes (
-    id            INTEGER PRIMARY KEY,
-    form_id       INTEGER NOT NULL REFERENCES forms(id),
-    name          TEXT NOT NULL,
-    question      TEXT NOT NULL,
-    -- The id the definition gave the question, if it gave one.
-    --
-    -- It is the only thing that survives a real rename. Peso (kg) to Peso kg
-    -- is a spelling change, and the column name catches it because both
-    -- become Peso_kg. Peso (kg) to Weight is the same question with nothing
-    -- in common, and without an id there is no way to know that and no way
-    -- to keep the answers together.
-    --
-    -- Nullable, because most forms in the world do not have one -- and the
-    -- measurement says what that costs.
-    question_id   TEXT,
-    kind          TEXT NOT NULL,
-    type          TEXT NOT NULL,
-    choice        TEXT,
-    page          TEXT,
-    allowed       TEXT,
-    first_seen    INTEGER NOT NULL,
-    last_seen     INTEGER NOT NULL,
-    UNIQUE (form_id, name)
-  );
+export type Filled = {
+  submissionId: number;
+  placed: unknown[];
+  unplaced: Array<{ called: string; why: string }>;
+  wrongType: Array<{ called: string; why: string }>;
+  keptWhole: string[];
+};
 
-  -- Which version offered which question. "Was this asked in March" and "did
-  -- anybody answer it" are different questions, and one table cannot tell them
-  -- apart.
-  CREATE TABLE version_attributes (
-    version_id    INTEGER NOT NULL REFERENCES versions(id),
-    attribute_id  INTEGER NOT NULL REFERENCES attributes(id),
-    called        TEXT NOT NULL,
-    PRIMARY KEY (version_id, attribute_id)
-  );
+import { flatten } from '../flatten/attributes.ts';
+import { whatChanged } from '../flatten/identity.ts';
+import { index } from '../flatten/match.ts';
+import type { Finder } from '../flatten/match.ts';
+import { readAs } from '../form/kinds.ts';
 
-  CREATE TABLE submissions (
-    id          INTEGER PRIMARY KEY,
-    form_id     INTEGER NOT NULL REFERENCES forms(id),
-    version_id  INTEGER NOT NULL REFERENCES versions(id),
-    at          TEXT NOT NULL,
-    reference   TEXT NOT NULL
-  );
-
-  -- One row per answer, typed on the way in.
-  --
-  -- Four columns rather than one, because a value stored as text is a value
-  -- that has to be cast before it can be summed -- and a cast in a WHERE clause
-  -- is an index nobody can use and a failure nobody sees when one row of forty
-  -- thousand is not a number.
-  CREATE TABLE answers (
-    id             INTEGER PRIMARY KEY,
-    submission_id  INTEGER NOT NULL REFERENCES submissions(id),
-    attribute_id   INTEGER NOT NULL REFERENCES attributes(id),
-    as_text        TEXT,
-    as_number      REAL,
-    as_boolean     INTEGER,
-    as_date        TEXT,
-    matched        TEXT NOT NULL
-  );
-
-  -- What could not be placed, and why. The point of the whole thing.
-  CREATE TABLE unplaced (
-    id             INTEGER PRIMARY KEY,
-    submission_id  INTEGER NOT NULL REFERENCES submissions(id),
-    called         TEXT NOT NULL,
-    raw            TEXT,
-    why            TEXT NOT NULL
-  );
-
-  -- The answers to a matrix or a repeating group, kept whole because they do
-  -- not fit in a cell. Readable, and not something anybody can put in a WHERE
-  -- clause -- which is said rather than hidden.
-  CREATE TABLE kept_whole (
-    id             INTEGER PRIMARY KEY,
-    submission_id  INTEGER NOT NULL REFERENCES submissions(id),
-    -- "called", not "question", and for the same reason as in the table
-    -- above: this is the key the answer ARRIVED under. Nothing here matched
-    -- it against the form, so calling it a question would be claiming
-    -- something the code never checked.
-    --
-    -- The name it first had cost a backtick inside a template literal, which
-    -- closed the schema string in the middle of a comment. The whole schema
-    -- is one template literal; no backticks in it.
-    called         TEXT NOT NULL,
-    kind           TEXT NOT NULL,
-    raw            TEXT NOT NULL
-  );
-
-  CREATE INDEX ix_answers_attribute ON answers (attribute_id);
-  CREATE INDEX ix_answers_submission ON answers (submission_id);
-  CREATE INDEX ix_unplaced_submission ON unplaced (submission_id);
-`;
+/**
+ * The schema, read from the file next to this one.
+ *
+ * `schema.sql` rather than a template literal: a schema is the part of a system
+ * people argue about, and it argues better as a file something can open,
+ * colour and diff than as a string inside a module.
+ */
+const SCHEMA = readFileSync(new URL('./schema.sql', import.meta.url), 'utf8');
 
 export function store() {
   const db = new DatabaseSync(':memory:');
   db.exec(SCHEMA);
 
-  const put = (sql) => db.prepare(sql);
+  /**
+   * A prepared statement, with the shape its caller says it returns.
+   *
+   * `node:sqlite` hands back `Record<string, SQLOutputValue>`, which is honest —
+   * it cannot know what a SELECT produces. Wrapping `prepare` once means the
+   * cast happens here rather than at forty call sites, and each of those says
+   * what it expects instead of saying nothing.
+   */
+  const put = (sql: string) => {
+    const statement = db.prepare(sql);
+
+    return {
+      get: <T>(...params: SQLInputValue[]): T | undefined =>
+        statement.get(...params) as unknown as T | undefined,
+      all: <T>(...params: SQLInputValue[]): T[] => statement.all(...params) as unknown as T[],
+      run: (...params: SQLInputValue[]) => statement.run(...params),
+    };
+  };
 
   const statements = {
     form: put('INSERT INTO forms (name) VALUES (?) RETURNING id'),
@@ -224,8 +165,8 @@ export function store() {
     db,
 
     /** Every query in `src/answers/` goes through this. */
-    run(sql, params = []) {
-      return db.prepare(sql).all(...params);
+    run<T = Record<string, unknown>>(sql: string, params: SQLInputValue[] = []): T[] {
+      return db.prepare(sql).all(...params) as unknown as T[];
     },
 
     close() {
@@ -237,34 +178,44 @@ export function store() {
      * screen to show it: which columns are new, which are the same question
      * under a new name, and what did not fit.
      */
-    save(name, definition, { note = '', at = '2026-01-01' } = {}) {
-      const existing = statements.formByName.get(name);
-      const formId = existing ? existing.id : statements.form.get(name).id;
+    save(
+      name: string,
+      definition: unknown,
+      { note = '', at = '2026-01-01' }: { note?: string; at?: string } = {}
+    ): Saved {
+      const existing = statements.formByName.get<{ id: number }>(name);
+      const formId = existing ? existing.id : statements.form.get<{ id: number }>(name)!.id;
 
-      const number = (statements.lastVersion.get(formId)?.n ?? 0) + 1;
-      const versionId = statements.version.get(formId, number, at, note, JSON.stringify(definition)).id;
+      const number = Number(statements.lastVersion.get<{ n: number }>(formId)?.n ?? 0) + 1;
+      const versionId = statements.version.get<{ id: number }>(
+        formId,
+        number,
+        at,
+        note,
+        JSON.stringify(definition)
+      )!.id;
 
-      const { attributes, doesNotFit, trouble } = flatten(definition);
+      const { attributes, doesNotFit, trouble } = flatten(definition as Form);
 
       // What this version changes about what the form already had.
       //
       // Worked out against the FORM, which is the point of the schema: a
       // question that is still being asked keeps its column and its answers,
       // whatever the new version calls it.
-      const known = statements.attributes.all(formId);
+      const known = statements.attributes.all<KnownAttribute>(formId);
       const changed = whatChanged(known, attributes);
 
-      const added = [];
-      const renamed = [];
+      const added: string[] = [];
+      const renamed: Saved['renamed'] = [];
 
       for (const attribute of changed.same) {
         const already = known.find((one) => one.name === attribute.name);
-        statements.seenAgain.run(number, attribute.question, attribute.id ?? null, already.id);
+        statements.seenAgain.run(number, attribute.question, attribute.id ?? null, already!.id);
         // What this version CALLED it, which is the question rather than the
         // column. The column name is derivable from it and the question is
         // not derivable from the column, so this is the one worth keeping --
         // and it is what a rename has to be searchable by afterwards.
-        statements.offers.run(versionId, already.id, attribute.question);
+        statements.offers.run(versionId, already!.id, attribute.question);
       }
 
       for (const one of changed.renamed) {
@@ -277,7 +228,7 @@ export function store() {
       }
 
       for (const attribute of changed.added) {
-        const id = statements.newAttribute.get(
+        const id = statements.newAttribute.get<{ id: number }>(
           formId,
           attribute.name,
           attribute.question,
@@ -289,7 +240,7 @@ export function store() {
           attribute.allowed ? JSON.stringify(attribute.allowed) : null,
           number,
           number
-        ).id;
+        )!.id;
 
         statements.offers.run(versionId, id, attribute.question);
         added.push(attribute.name);
@@ -308,17 +259,22 @@ export function store() {
      * forty is not a reason to lose the other thirty-nine, and because the
      * record of what could not be placed is the most useful thing this produces.
      */
-    fill(formId, versionId, answers, { at = '2026-01-01', reference = '' } = {}) {
-      const submissionId = statements.submission.get(formId, versionId, at, reference).id;
+    fill(
+      formId: number,
+      versionId: number,
+      answers: Record<string, unknown> | null | undefined,
+      { at = '2026-01-01', reference = '' }: { at?: string; reference?: string } = {}
+    ): Filled {
+      const submissionId = statements.submission.get<{ id: number }>(formId, versionId, at, reference)!.id;
 
       const known = withEveryName(statements, formId);
       const finder = index(known);
       const byName = new Map(known.map((one) => [one.name, one]));
 
-      const placed = [];
-      const unplaced = [];
-      const whole = [];
-      const wrongType = [];
+      const placed: unknown[] = [];
+      const unplaced: Filled['unplaced'] = [];
+      const whole: string[] = [];
+      const wrongType: Filled['wrongType'] = [];
 
       for (const [called, raw] of Object.entries(answers ?? {})) {
         // ── the ones that do not fit in a cell ────────────────────────────
@@ -345,7 +301,17 @@ export function store() {
           }
 
           for (const column of found) {
-            statements.answer.run(submissionId, column.id, null, null, ticked.has(column.choice) ? 1 : 0, null, 'exactly');
+            // `choice` is never null here: `found` holds only the columns of a
+            // checkbox, and a checkbox column is one per choice by construction.
+            statements.answer.run(
+              submissionId,
+              column.id,
+              null,
+              null,
+              ticked.has(String(column.choice)) ? 1 : 0,
+              null,
+              'exactly'
+            );
             placed.push(column.name);
           }
 
@@ -361,7 +327,7 @@ export function store() {
           continue;
         }
 
-        const read = readAs(said.found.type, raw);
+        const read = readAs(String(said.found.type), raw);
 
         if (!read.ok) {
           // A value of the wrong type is not an unplaced answer -- the question
@@ -375,10 +341,12 @@ export function store() {
         statements.answer.run(
           submissionId,
           said.found.id,
-          said.found.type === 'text' ? read.value : null,
-          said.found.type === 'number' || said.found.type === 'integer' ? read.value : null,
+          said.found.type === 'text' ? (read.value as SQLInputValue) : null,
+          said.found.type === 'number' || said.found.type === 'integer'
+            ? (read.value as SQLInputValue)
+            : null,
           said.found.type === 'boolean' ? (read.value === null ? null : read.value ? 1 : 0) : null,
-          said.found.type === 'date' ? read.value : null,
+          said.found.type === 'date' ? (read.value as SQLInputValue) : null,
           said.how
         );
 
@@ -400,21 +368,29 @@ export function store() {
  * measurement, in a run where nothing errored and every total looked
  * plausible -- which is the whole reason the measurement exists.
  */
-function withEveryName(statements, formId) {
-  const alsoCalled = new Map();
+function withEveryName(
+  statements: { namesEver: { all: <T>(...p: SQLInputValue[]) => T[] }; attributes: { all: <T>(...p: SQLInputValue[]) => T[] } },
+  formId: number
+): KnownAttribute[] {
+  const alsoCalled = new Map<number, Set<string>>();
 
-  for (const row of statements.namesEver.all(formId)) {
+  for (const row of statements.namesEver.all<{ id: number; called: string }>(formId)) {
     if (!alsoCalled.has(row.id)) alsoCalled.set(row.id, new Set());
-    alsoCalled.get(row.id).add(row.called);
+    alsoCalled.get(row.id)!.add(row.called);
   }
 
-  return statements.attributes.all(formId).map((one) => ({
+  return statements.attributes.all<KnownAttribute>(formId).map((one) => ({
     ...one,
     alsoCalled: [...(alsoCalled.get(one.id) ?? [])],
   }));
 }
 
-function columnsFor(finder, byName, called, known) {
+function columnsFor(
+  finder: Finder<KnownAttribute>,
+  byName: Map<string, KnownAttribute>,
+  called: string,
+  known: KnownAttribute[]
+): KnownAttribute[] {
   const said = finder.find(called);
   if (!said.found) return [];
 

@@ -18,16 +18,16 @@
  * versioning, and the flattening is what makes the id worth having.**
  */
 
-import { documents } from '../blob/documents.js';
-import { store } from '../store/db.js';
+import { documents } from '../blob/documents.ts';
+import { store } from '../store/db.ts';
 import {
   AWKWARD,
   INTAKE_V1,
   INTAKE_V1_IDS,
   INTAKE_V2_IDS,
   INTAKE_V2_RENAMED,
-} from '../fixtures/forms.js';
-import { SUBMISSIONS } from '../fixtures/submissions.js';
+} from '../fixtures/forms.ts';
+import { SUBMISSIONS } from '../fixtures/submissions.ts';
 
 export const FORM = 'Patient intake';
 
@@ -38,15 +38,29 @@ export const FORM = 'Patient intake';
  * submission against version 2 is keyed that way. Nobody typed a key that was
  * not on the form in front of them.
  */
-export function asAnsweredOn(submission) {
+export function asAnsweredOn(submission: { onV2: boolean; answers: Record<string, unknown> }): Record<string, unknown> {
   if (!submission.onV2) return submission.answers;
 
   const { 'Anything else': notes, ...rest } = submission.answers;
   return notes === undefined ? rest : { ...rest, 'Other notes': notes };
 }
 
+import type { Form } from '../flatten/attributes.ts';
+import type { Store, Saved, Filled } from '../store/db.ts';
+import type { Documents } from '../blob/documents.ts';
+
+export type FlatWorld = {
+  kept: Store;
+  formId: number;
+  versions: [Saved, Saved];
+  awkward: Saved;
+  filling: Filled[];
+};
+
+export type Worlds = { documents: Documents; flat: FlatWorld; flatWithIds: FlatWorld };
+
 /** One flattened world, built from a pair of definitions. */
-function flatWorld(v1, v2) {
+function flatWorld(v1: Form, v2: Form): FlatWorld {
   const kept = store();
 
   const first = kept.save(FORM, v1, { note: 'as first built', at: '2026-01-10' });
@@ -71,7 +85,7 @@ function flatWorld(v1, v2) {
   return { kept, formId: first.formId, versions: [first, second], awkward, filling };
 }
 
-export function buildWorlds() {
+export function buildWorlds(): Worlds {
   const kept = documents();
 
   for (const one of SUBMISSIONS) {
@@ -85,7 +99,7 @@ export function buildWorlds() {
   };
 }
 
-export function closeWorlds(worlds) {
+export function closeWorlds(worlds: Worlds): void {
   worlds.documents.close();
   worlds.flat.kept.close();
   worlds.flatWithIds.kept.close();

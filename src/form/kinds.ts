@@ -75,18 +75,48 @@ export const KINDS = {
    * thing a column cannot express.
    */
   repeating: { stores: 'nested', as: null, choices: false, says: 'a group, repeated' },
+} as const;
+
+/**
+ * The vocabulary, as types.
+ *
+ * `as const` on KINDS above is what makes these literal unions rather than
+ * `string`. It costs two words and it means a kind nobody defined, or a
+ * storage class nobody handles, is an error here rather than a null three
+ * files away.
+ */
+export type KindName = keyof typeof KINDS;
+export type Kind = (typeof KINDS)[KindName];
+export type Stores = Kind['stores'];
+export type StoredAs = Extract<Kind, { as: string }>['as'];
+
+/** A question as a definition writes it. Everything beyond `kind` is optional. */
+export type Question = {
+  kind?: string;
+  name?: string;
+  label?: string;
+  id?: string;
+  choices?: unknown[];
+  elements?: Question[];
+  rows?: unknown[];
+  columns?: unknown[];
 };
 
-export const KIND_NAMES = Object.keys(KINDS);
+export type Read = { ok: true; value: unknown } | { ok: false; why: string };
+
+export const KIND_NAMES = Object.keys(KINDS) as KindName[];
 
 /** Kinds that produce a column of their own. */
-export const FLATTENS = KIND_NAMES.filter((one) => KINDS[one].stores === 'one' || KINDS[one].stores === 'many');
+export const FLATTENS: KindName[] = KIND_NAMES.filter(
+  (one) => KINDS[one].stores === 'one' || KINDS[one].stores === 'many'
+);
 
 /** Kinds that do not fit in a cell, and are stored whole and marked as such. */
-export const DOES_NOT_FIT = KIND_NAMES.filter((one) => KINDS[one].stores === 'nested');
+export const DOES_NOT_FIT: KindName[] = KIND_NAMES.filter((one) => KINDS[one].stores === 'nested');
 
-export function kindOf(question) {
-  return KINDS[question?.kind] ?? null;
+export function kindOf(question: Question | null | undefined): Kind | null {
+  const name = question?.kind;
+  return name && name in KINDS ? KINDS[name as KindName] : null;
 }
 
 /**
@@ -104,9 +134,8 @@ export function kindOf(question) {
  * So a value is read as its **declared** type on the way in, once, and the
  * failures are recorded rather than dropped.
  *
- * @returns {{ok: true, value: unknown} | {ok: false, why: string}}
  */
-export function readAs(type, raw) {
+export function readAs(type: string, raw: unknown): Read {
   if (raw === null || raw === undefined || raw === '') return { ok: true, value: null };
 
   if (type === 'text') return { ok: true, value: String(raw) };

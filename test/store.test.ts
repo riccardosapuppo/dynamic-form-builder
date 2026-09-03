@@ -11,24 +11,26 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { store } from '../src/store/db.js';
+import { store } from '../src/store/db.ts';
 import {
   AWKWARD,
   INTAKE_V1,
   INTAKE_V1_IDS,
   INTAKE_V2_IDS,
   INTAKE_V2_RENAMED,
-} from '../src/fixtures/forms.js';
+} from '../src/fixtures/forms.ts';
 
 const FORM = 'Patient intake';
 
 /** A store with version 1 saved, and version 2 as well if the test asks. */
-function opened(v2) {
+function opened(v2?: boolean) {
   const kept = store();
   const first = kept.save(FORM, v2 ? INTAKE_V1_IDS : INTAKE_V1, { at: '2026-01-10' });
+  // `!` on `second` at the call sites: every test that reads it passes `true`,
+  // and a test that did not would fail on the line before.
   const second = v2 ? kept.save(FORM, INTAKE_V2_IDS, { at: '2026-03-20' }) : null;
 
-  return { kept, first, second };
+  return { kept, first, second: second! };
 }
 
 test('saving a version reports what it did, in enough detail to show somebody', () => {
@@ -127,11 +129,14 @@ test('an answer to a question the form does not ask is written down, not dropped
   assert.equal(said.unplaced.length, 1);
   assert.equal(said.unplaced[0].called, 'Fiscal code');
 
-  const rows = kept.run('SELECT called, raw, why FROM unplaced WHERE submission_id = ?', [said.submissionId]);
+  const rows = kept.run<{ called: string; raw: string; why: string }>(
+    'SELECT called, raw, why FROM unplaced WHERE submission_id = ?',
+    [said.submissionId]
+  );
 
   assert.equal(rows.length, 1);
-  assert.ok(rows[0].raw.includes('RSSMRA80A01H501U'), 'and the value is kept with it');
-  assert.ok(rows[0].why.length > 0, 'and the reason');
+  assert.ok(rows[0]!.raw.includes('RSSMRA80A01H501U'), 'and the value is kept with it');
+  assert.ok(rows[0]!.why.length > 0, 'and the reason');
 
   kept.close();
 });
@@ -164,7 +169,10 @@ test('a matrix and a repeating group are kept whole, with the answer intact', ()
 
   assert.equal(said.keptWhole.length, 2);
 
-  const rows = kept.run('SELECT called, raw FROM kept_whole WHERE submission_id = ?', [said.submissionId]);
+  const rows = kept.run<{ called: string; raw: string }>(
+    'SELECT called, raw FROM kept_whole WHERE submission_id = ?',
+    [said.submissionId]
+  );
 
   assert.equal(rows.length, 2);
   assert.ok(rows.some((r) => r.raw.includes('appendix')), 'nothing about it is lost');
@@ -257,7 +265,9 @@ test('a form whose questions collide is saved, with the trouble reported', () =>
 test('the definition is kept whole, so what was actually saved is recoverable', () => {
   const { kept, first } = opened();
 
-  const raw = kept.run('SELECT definition FROM versions WHERE id = ?', [first.versionId])[0].definition;
+  const raw = kept.run<{ definition: string }>('SELECT definition FROM versions WHERE id = ?', [
+    first.versionId,
+  ])[0]!.definition;
 
   assert.deepEqual(JSON.parse(raw), INTAKE_V1, 'exactly the thing that was saved');
 

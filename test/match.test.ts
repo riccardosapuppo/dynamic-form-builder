@@ -11,9 +11,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { flatten } from '../src/flatten/attributes.js';
-import { index, loosely, normalised } from '../src/flatten/match.js';
-import { AWKWARD, INTAKE_V1 } from '../src/fixtures/forms.js';
+import { flatten } from '../src/flatten/attributes.ts';
+import { index, loosely, normalised } from '../src/flatten/match.ts';
+import { AWKWARD, INTAKE_V1 } from '../src/fixtures/forms.ts';
 
 const finder = () => index(flatten(INTAKE_V1).attributes);
 
@@ -34,8 +34,8 @@ test('the dash a word processor makes is the same dash', () => {
 test('an answer keyed by the question finds its column, and so does one keyed by the column', () => {
   const found = finder();
 
-  assert.equal(found.find('Peso (kg)').found.name, 'Peso_kg');
-  assert.equal(found.find('Peso_kg').found.name, 'Peso_kg');
+  assert.equal(found.find('Peso (kg)').found!.name, 'Peso_kg');
+  assert.equal(found.find('Peso_kg').found!.name, 'Peso_kg');
 
   for (const both of ['Peso (kg)', 'Peso_kg']) assert.equal(found.find(both).how, 'exactly');
 });
@@ -44,10 +44,10 @@ test('a hand-typed key finds it one rung down, and the rung is reported', () => 
   const found = finder();
 
   assert.equal(found.find('  date of birth').how, 'normalised');
-  assert.equal(found.find('  date of birth').found.name, 'Date_of_birth');
+  assert.equal(found.find('  date of birth').found!.name, 'Date_of_birth');
 
   assert.equal(found.find('Peso‐kg').how, 'loosely');
-  assert.equal(found.find('Peso‐kg').found.name, 'Peso_kg');
+  assert.equal(found.find('Peso‐kg').found!.name, 'Peso_kg');
 });
 
 test('a key nothing answers to is refused, with a reason', () => {
@@ -76,7 +76,7 @@ test('an attribute is found by a name it used to have', () => {
   // the data.
   const found = index([{ name: 'Other_notes', question: 'Other notes', alsoCalled: ['Anything else'] }]);
 
-  assert.equal(found.find('Anything else').found.name, 'Other_notes');
+  assert.equal(found.find('Anything else').found!.name, 'Other_notes');
   assert.equal(found.find('Anything else').how, 'exactly');
 });
 
@@ -84,5 +84,5 @@ test('reaching one attribute twice is not a clash with itself', () => {
   const found = index([{ name: 'Peso_kg', question: 'Peso (kg)', alsoCalled: ['Peso kg', 'Peso (kg)'] }]);
 
   assert.deepEqual(found.ambiguous, []);
-  assert.equal(found.find('Peso—kg').found.name, 'Peso_kg');
+  assert.equal(found.find('Peso—kg').found!.name, 'Peso_kg');
 });

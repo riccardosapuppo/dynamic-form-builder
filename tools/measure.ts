@@ -9,15 +9,17 @@
  * README.
  */
 
-import { buildWorlds, closeWorlds } from '../src/measure/worlds.js';
-import { measure, tally } from '../src/measure/questions.js';
+import { buildWorlds, closeWorlds } from '../src/measure/worlds.ts';
+import { measure, tally } from '../src/measure/questions.ts';
+import type { Row, Which } from '../src/measure/questions.ts';
 
 const MARK = { right: '  ok  ', wrong: ' WRONG', cannot: 'cannot' };
 
-const pad = (text, width) => text + ' '.repeat(Math.max(0, width - text.length));
+const pad = (text: unknown, width: number): string =>
+  String(text) + ' '.repeat(Math.max(0, width - String(text).length));
 
-/** The prose in `questions.js` is written for a README as well as for this. */
-const plain = (text) => text.split('**').join('').split('`').join('"');
+/** The prose in `questions.ts` is written for a README as well as for this. */
+const plain = (text: string): string => text.split('**').join('').split('`').join('"');
 
 const worlds = buildWorlds();
 const rows = measure(worlds);
@@ -37,7 +39,9 @@ console.log(`  ${pad('', ASKS)}  ${pad('truth', TRUTH)}  ${pad('documents', MARK
 console.log(RULE);
 
 for (const row of rows) {
-  const marks = ['documents', 'flat', 'flatWithIds'].map((which) => pad(MARK[row[which].verdict], MARKS));
+  const marks = (['documents', 'flat', 'flatWithIds'] as Which[]).map((which) =>
+    pad(MARK[row[which].verdict], MARKS)
+  );
   console.log(`  ${pad(plain(row.asks), ASKS)}  ${pad(row.truth, TRUTH)}  ${marks.join('  ')}`);
 }
 
@@ -48,7 +52,7 @@ for (const [which, label] of [
   ['documents', 'documents'],
   ['flat', 'flat'],
   ['flatWithIds', 'flat+ids'],
-]) {
+] as Array<[Which, string]>) {
   const c = counts[which];
   console.log(`  ${pad(label, 12)} right ${c.right}   wrong ${c.wrong}   cannot answer ${c.cannot}`);
 }
@@ -60,7 +64,7 @@ for (const [which, label] of [
 // underneath in words. The wrong ones are the point: every one of them came
 // back from a query nobody could fault, on data where nothing failed.
 
-const notes = (row, which, label) => {
+const notes = (row: Row, which: Which, label: string): string | null => {
   const said = row[which];
   if (said.verdict === 'right') return null;
 

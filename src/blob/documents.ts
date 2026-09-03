@@ -26,21 +26,21 @@
  *     rather than an error when the guess is wrong.
  */
 
+import { readFileSync } from 'node:fs';
+
 import { DatabaseSync } from 'node:sqlite';
+import type { SQLInputValue } from 'node:sqlite';
 
-const SCHEMA = `
-  CREATE TABLE documents (
-    id          INTEGER PRIMARY KEY,
-    form        TEXT NOT NULL,
-    version     INTEGER NOT NULL,
-    at          TEXT NOT NULL,
-    reference   TEXT NOT NULL,
-    -- Everything, as it arrived. Nothing is lost and nothing is understood.
-    answers     TEXT NOT NULL
-  );
+export type Documents = ReturnType<typeof documents>;
 
-  CREATE INDEX ix_documents_form ON documents (form);
-`;
+/**
+ * The schema, read from the file next to this one.
+ *
+ * `schema.sql` rather than a template literal: a schema is the part of a system
+ * people argue about, and it argues better as a file something can open,
+ * colour and diff than as a string inside a module.
+ */
+const SCHEMA = readFileSync(new URL('./schema.sql', import.meta.url), 'utf8');
 
 export function documents() {
   const db = new DatabaseSync(':memory:');
@@ -51,16 +51,16 @@ export function documents() {
   return {
     db,
 
-    close() {
+    close(): void {
       db.close();
     },
 
-    keep(form, version, submission) {
+    keep(form: string, version: number, submission: { at: string; reference: string; answers: unknown }): void {
       put.run(form, version, submission.at, submission.reference, JSON.stringify(submission.answers));
     },
 
-    run(sql, params = []) {
-      return db.prepare(sql).all(...params);
+    run<T = Record<string, unknown>>(sql: string, params: SQLInputValue[] = []): T[] {
+      return db.prepare(sql).all(...params) as unknown as T[];
     },
 
     /**
@@ -69,7 +69,7 @@ export function documents() {
      * This is the query anybody writes, and it is right — for one key. What it
      * cannot know is that the question was called something else last quarter.
      */
-    answered(key) {
+    answered(key: string): number {
       return Number(
         this.run(
           `SELECT COUNT(*) AS n FROM documents
@@ -87,7 +87,7 @@ export function documents() {
      * than failing, so a column with three text answers in it comes back lower
      * and nothing says so. That is the type problem, exactly as it arrives.
      */
-    average(key) {
+    average(key: string): { average: number | null; of: number } {
       const said = this.run(
         `SELECT AVG(CAST(json_extract(answers, '$.' || ?) AS REAL)) AS avg,
                 COUNT(json_extract(answers, '$.' || ?)) AS n
@@ -106,7 +106,7 @@ export function documents() {
      * comma-separated string would need entirely different SQL, and the query
      * cannot tell which it is looking at without opening one and checking.
      */
-    ticked(key, choice) {
+    ticked(key: string, choice: string): number {
       return Number(
         this.run(
           `SELECT COUNT(DISTINCT d.id) AS n
@@ -118,12 +118,12 @@ export function documents() {
     },
 
     /** Every key any document has, which is the closest thing to a schema. */
-    keys() {
-      return this.run(
+    keys(): string[] {
+      return this.run<{ key: string }>(
         `SELECT DISTINCT one.key AS key
            FROM documents d, json_each(d.answers) AS one
           ORDER BY one.key`
-      ).map((row) => row.key);
+      ).map((row) => String(row.key));
     },
   };
 }

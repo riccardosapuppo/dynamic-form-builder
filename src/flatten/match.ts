@@ -37,7 +37,25 @@
  */
 
 /** Rung two: accents off, lowercased, whitespace collapsed. */
-export function normalised(name) {
+/** The least an attribute has to have for the ladder to index it. */
+export type Matchable = {
+  name: string;
+  question: string;
+  alsoCalled?: string[];
+  [more: string]: unknown;
+};
+
+export type Found<T extends Matchable = Matchable> =
+  | { found: T; how: 'exactly' | 'normalised' | 'loosely'; why?: undefined }
+  | { found: null; how?: undefined; why: string };
+
+export type Finder<T extends Matchable = Matchable> = {
+  readonly size: number;
+  readonly ambiguous: string[];
+  find(name: string): Found<T>;
+};
+
+export function normalised(name: unknown): string {
   return String(name ?? '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -53,7 +71,7 @@ export function normalised(name) {
  * processor has en dashes and non-breaking hyphens in it, which are different
  * characters from the hyphen on a keyboard and look identical on a screen.
  */
-export function loosely(name) {
+export function loosely(name: unknown): string {
   const base = normalised(name);
   if (!base) return '';
 
@@ -73,13 +91,13 @@ export function loosely(name) {
  * against a form with sixty columns is otherwise two thousand comparisons, and
  * the loop that does that is the one somebody finds in a profiler.
  */
-export function index(attributes) {
+export function index<T extends Matchable>(attributes: T[]): Finder<T> {
   const exactly = new Map();
   const byNormal = new Map();
   const byLoose = new Map();
 
   /** Loose keys that more than one question answers to, and are therefore refused. */
-  const ambiguous = new Set();
+  const ambiguous = new Set<string>();
 
   for (const attribute of attributes) {
     // Its column name, the question it came from, and every name it has ever
@@ -131,7 +149,7 @@ export function index(attributes) {
      * @returns {{found: Attribute, how: 'exactly'|'normalised'|'loosely'}
      *   | {found: null, why: string}}
      */
-    find(name) {
+    find(name: string): Found<T> {
       const exact = exactly.get(name);
       if (exact) return { found: exact, how: 'exactly' };
 

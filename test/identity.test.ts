@@ -11,23 +11,35 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { flatten } from '../src/flatten/attributes.js';
-import { sameQuestionAs, whatChanged } from '../src/flatten/identity.js';
+import { flatten } from '../src/flatten/attributes.ts';
+import type { Attribute, Form } from '../src/flatten/attributes.ts';
+import type { KnownAttribute } from '../src/flatten/identity.ts';
+
+/**
+ * A candidate attribute for the ladder, with only the fields it looks at.
+ *
+ * `sameQuestionAs` reads four of them and the type asks for eleven, so a test
+ * about the ladder would otherwise spend six lines filling in a page and an
+ * `inside` array nothing in it will read.
+ */
+const candidate = (one: Partial<Attribute>): Attribute =>
+  ({ kind: 'text', type: 'text', page: 'p', inside: [], allowed: null, id: null, ...one }) as Attribute;
+import { sameQuestionAs, whatChanged } from '../src/flatten/identity.ts';
 import {
   INTAKE_V1,
   INTAKE_V1_IDS,
   INTAKE_V2,
   INTAKE_V2_IDS,
   INTAKE_V2_RENAMED,
-} from '../src/fixtures/forms.js';
+} from '../src/fixtures/forms.ts';
 
 /** What the store holds: the flattened attributes, as rows. */
-const asKnown = (form) =>
+const asKnown = (form: Form): KnownAttribute[] =>
   flatten(form).attributes.map((one, id) => ({ ...one, id: id + 1, question_id: one.id ?? null }));
 
-const changed = (before, after) => whatChanged(asKnown(before), flatten(after).attributes);
+const changed = (before: Form, after: Form) => whatChanged(asKnown(before), flatten(after).attributes);
 
-const names = (list) => list.map((one) => one.name).sort();
+const names = (list: Array<{ name: string }>): string[] => list.map((one) => one.name).sort();
 
 test('a question the form already has is the same question, not a new one', () => {
   const said = changed(INTAKE_V1, INTAKE_V2);
@@ -98,14 +110,20 @@ test('a question the new version stops asking is withdrawn, never deleted', () =
 test('the rungs are reported, so a screen can say how it decided', () => {
   const known = asKnown(INTAKE_V1_IDS);
 
-  const byId = sameQuestionAs(known, { id: 'q.smoker', name: 'Whatever', question: 'Whatever', choice: null });
+  const byId = sameQuestionAs(
+    known,
+    candidate({ id: 'q.smoker', name: 'Whatever', question: 'Whatever', choice: null })
+  );
   assert.equal(byId.how, 'its id');
 
-  const byName = sameQuestionAs(known, { name: 'Smoker', question: 'Something else', choice: null });
+  const byName = sameQuestionAs(known, candidate({ name: 'Smoker', question: 'Something else', choice: null }));
   assert.equal(byName.how, 'the same column name');
 
-  const byQuestion = sameQuestionAs(known, { name: 'Other', question: 'smoker', choice: null });
+  const byQuestion = sameQuestionAs(known, candidate({ name: 'Other', question: 'smoker', choice: null }));
   assert.equal(byQuestion.how, 'the same question');
 
-  assert.equal(sameQuestionAs(known, { name: 'Nothing', question: 'Nothing', choice: null }).found, null);
+  assert.equal(
+    sameQuestionAs(known, candidate({ name: 'Nothing', question: 'Nothing', choice: null })).found,
+    null
+  );
 });

@@ -30,7 +30,48 @@
  * about the ones it cannot — which is the failure this whole project is about.
  */
 
-import { KINDS, kindOf } from '../form/kinds.js';
+import { KINDS, kindOf } from '../form/kinds.ts';
+import type { Question, StoredAs } from '../form/kinds.ts';
+
+/**
+ * A column, and everything about it that outlives the definition.
+ *
+ * `id` and `choice` are the two fields the rest of the project turns on:
+ * the id is what survives a rename, and the choice is what tells four columns
+ * of one checkbox apart. Both were `null` more often than not, and both were
+ * forgotten once each in a comparison -- see identity.ts.
+ */
+export type Attribute = {
+  name: string;
+  question: string;
+  id: string | null;
+  kind: string;
+  type: StoredAs | null;
+  choice: string | null;
+  label?: string;
+  page: string;
+  inside: string[];
+  allowed: string[] | null;
+  renamedFrom?: string;
+  alsoCalled?: string[];
+};
+
+/** A question that cannot become a column, and the reason in words. */
+export type DoesNotFit = {
+  question: string;
+  kind: string;
+  page: string;
+  inside: string[];
+  why: string;
+  keptWhole: true;
+};
+
+export type Choice = { value: string; label: string };
+
+export type Flattened = { attributes: Attribute[]; doesNotFit: DoesNotFit[]; trouble: string[] };
+
+/** A form definition, as loosely as one really arrives. */
+export type Form = { name?: string; pages?: Array<{ name?: string; elements?: Question[] }> };
 
 /**
  * A name a column can be called.
@@ -45,7 +86,7 @@ import { KINDS, kindOf } from '../form/kinds.js';
  * separators. Everything else becomes an underscore rather than being dropped,
  * so two questions that differ only in punctuation do not become one column.
  */
-export function nameFor(raw) {
+export function nameFor(raw: unknown): string {
   return String(raw ?? '')
     .normalize('NFD')
     // The combining marks block: the accent itself, once `normalize` has
@@ -75,15 +116,24 @@ export function nameFor(raw) {
  *
  * @returns {{attributes: Attribute[], doesNotFit: object[], trouble: string[]}}
  */
-export function flatten(form) {
-  const attributes = [];
-  const doesNotFit = [];
-  const trouble = [];
+export function flatten(form: Form | null | undefined): Flattened {
+  const attributes: Attribute[] = [];
+  const doesNotFit: DoesNotFit[] = [];
+  const trouble: string[] = [];
 
   /** Column names already used, so a collision is reported rather than silent. */
-  const taken = new Map();
+  /**
+   * Column names already used, so a collision is reported rather than silent.
+   *
+   * Two maps rather than one. The single map held counts under the column name
+   * and question names under a `question:` prefix of the same key, which is a
+   * map of two different things pretending to be one -- and it took a type
+   * error to say so out loud.
+   */
+  const taken = new Map<string, number>();
+  const firstClaimedBy = new Map<string, string>();
 
-  const add = (attribute) => {
+  const add = (attribute: Attribute): void => {
     // A name with nothing but punctuation in it.
     //
     // `nameFor("???")` is the empty string, and adding it produced a column
@@ -107,7 +157,7 @@ export function flatten(form) {
       // holding two questions' answers is the worst outcome available.
       const renamed = `${attribute.name}__${already + 1}`;
       trouble.push(
-        `"${attribute.question}" and "${taken.get(`question:${attribute.name}`)}" both become the column ` +
+        `"${attribute.question}" and "${firstClaimedBy.get(attribute.name)}" both become the column ` +
           `${attribute.name}; the second is ${renamed}`
       );
 
@@ -117,11 +167,11 @@ export function flatten(form) {
     }
 
     taken.set(attribute.name, 1);
-    taken.set(`question:${attribute.name}`, attribute.question);
+    firstClaimedBy.set(attribute.name, attribute.question);
     attributes.push(attribute);
   };
 
-  const walk = (elements, { page, inside }) => {
+  const walk = (elements: Question[] | undefined, { page, inside }: { page: string; inside: string[] }): void => {
     if (!Array.isArray(elements)) return;
 
     for (const element of elements) {
@@ -150,8 +200,8 @@ export function flatten(form) {
       // written for checkboxes.
       if (kind.stores === 'nested') {
         doesNotFit.push({
-          question: element.name,
-          kind: element.kind,
+          question: String(element.name ?? ''),
+          kind: String(element.kind),
           page,
           inside: [...inside],
           why:
@@ -166,11 +216,11 @@ export function flatten(form) {
       }
 
       const base = {
-        question: element.name,
+        question: String(element.name ?? ''),
         // The stable id, when the definition carries one. It is what lets a
         // question be renamed outright and keep its answers -- see identity.js.
         id: element.id ?? null,
-        kind: element.kind,
+        kind: String(element.kind),
         page,
         inside: [...inside],
       };
@@ -188,7 +238,7 @@ export function flatten(form) {
           add({
             ...base,
             name: `${nameFor(element.name)}.${nameFor(choice.value)}`,
-            type: kind.as,
+            type: kind.as as StoredAs,
             choice: choice.value,
             label: choice.label,
             allowed: null,
@@ -202,7 +252,7 @@ export function flatten(form) {
       add({
         ...base,
         name: nameFor(element.name),
-        type: kind.as,
+        type: kind.as as StoredAs,
         choice: null,
         // The allowed values travel with the column rather than staying in the
         // definition, so "which answers are no longer offered" is a question
@@ -228,7 +278,7 @@ export function flatten(form) {
  * languages. All three are the same list, and refusing two of them would mean
  * refusing most real forms.
  */
-export function choicesOf(element) {
+export function choicesOf(element: Question | null | undefined): Choice[] {
   const out = [];
 
   for (const one of element?.choices ?? []) {
@@ -238,14 +288,18 @@ export function choicesOf(element) {
     }
 
     if (one && typeof one === 'object') {
-      const value = one.value ?? one.name ?? null;
+      // `one` is whatever a definition put in the list, so it is read through
+      // a shape rather than trusted: three of the four spellings this handles
+      // came from real definitions, and a fourth will.
+      const said = one as { value?: unknown; name?: unknown; label?: unknown };
+      const value = said.value ?? said.name ?? null;
       if (value === null || value === undefined) continue;
 
       const label =
-        typeof one.label === 'string'
-          ? one.label
-          : one.label && typeof one.label === 'object'
-            ? (Object.values(one.label)[0] ?? String(value))
+        typeof said.label === 'string'
+          ? said.label
+          : said.label && typeof said.label === 'object'
+            ? (Object.values(said.label as Record<string, unknown>)[0] ?? String(value))
             : String(value);
 
       out.push({ value: String(value), label: String(label) });
@@ -256,20 +310,22 @@ export function choicesOf(element) {
 }
 
 /** Every question in a form, in order, panels flattened. Used by the screen. */
-export function questionsIn(form) {
-  const found = [];
+export type QuestionInForm = Question & { page: string; inside: string[]; says: string };
 
-  const walk = (elements, page, inside) => {
+export function questionsIn(form: Form | null | undefined): QuestionInForm[] {
+  const found: QuestionInForm[] = [];
+
+  const walk = (elements: Question[] | undefined, page: string, inside: string[]): void => {
     for (const element of elements ?? []) {
       const kind = kindOf(element);
       if (!kind) continue;
 
       if (kind.stores === 'nothing') {
-        walk(element.elements, page, [...inside, element.name]);
+        walk(element.elements, page, [...inside, String(element.name ?? '')]);
         continue;
       }
 
-      found.push({ ...element, page, inside, says: KINDS[element.kind].says });
+      found.push({ ...element, page, inside, says: kind.says });
     }
   };
 

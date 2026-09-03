@@ -36,7 +36,32 @@
  * which is not.
  */
 
-import { normalised } from './match.js';
+import { normalised } from './match.ts';
+import type { Attribute } from './attributes.ts';
+
+/**
+ * An attribute as the STORE holds it, which is not the same shape flatten
+ * produces: the id arrives as `question_id`, and there is a row id.
+ */
+export type KnownAttribute = {
+  id: number;
+  name: string;
+  question: string;
+  question_id: string | null;
+  choice: string | null;
+  [more: string]: unknown;
+};
+
+export type SameQuestion =
+  | { found: KnownAttribute; how: 'its id' | 'the same column name' | 'the same question' }
+  | { found: null; how: null };
+
+export type WhatChanged = {
+  added: Attribute[];
+  renamed: Array<{ was: KnownAttribute; now: Attribute; how: string }>;
+  same: Attribute[];
+  withdrawn: KnownAttribute[];
+};
 
 /**
  * The existing attribute this one is a new version of, or null.
@@ -44,7 +69,7 @@ import { normalised } from './match.js';
  * @param known      attributes the form already has
  * @param attribute  one produced by flattening the new version
  */
-export function sameQuestionAs(known, attribute) {
+export function sameQuestionAs(known: KnownAttribute[], attribute: Attribute): SameQuestion {
   // ── by id, and by choice where there is one ──────────────────────────────
   //
   // An id belongs to a QUESTION, and a checkbox question is several
@@ -93,11 +118,11 @@ export function sameQuestionAs(known, attribute) {
  * save a version wants to know that they are about to start a second column
  * for a question they only renamed.
  */
-export function whatChanged(known, attributes) {
-  const added = [];
-  const renamed = [];
-  const same = [];
-  const matchedIds = new Set();
+export function whatChanged(known: KnownAttribute[], attributes: Attribute[]): WhatChanged {
+  const added: Attribute[] = [];
+  const renamed: WhatChanged['renamed'] = [];
+  const same: Attribute[] = [];
+  const matchedIds = new Set<number>();
 
   for (const attribute of attributes) {
     const said = sameQuestionAs(known, attribute);

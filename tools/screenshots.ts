@@ -17,8 +17,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { aBrowser } from './a-browser.mjs';
-import { startTheService } from './with-the-service.mjs';
+import { aBrowser } from './a-browser.ts';
+import { startTheService } from './with-the-service.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const DOCS = path.join(here, '..', 'docs');
@@ -31,7 +31,7 @@ const { browser, channel } = await aBrowser();
 console.log(`
 Retaking the pictures in ${channel}
 `);
-const say = (name) => console.log(`  docs/${name}`);
+const say = (name: string): void => console.log(`  docs/${name}`);
 
 try {
   const page = await browser.newPage({
@@ -42,17 +42,18 @@ try {
 
   const drawn = () => page.getAttribute('[data-changes]', 'data-drawn');
 
-  const after = async (was, act) => {
+  const after = async (was: string | null, act: () => Promise<void>): Promise<void> => {
     await act();
     await page.waitForFunction(
-      (before) => document.querySelector('[data-changes]').dataset.drawn !== before,
+      (before: string | null) =>
+        (document.querySelector('[data-changes]') as HTMLElement).dataset.drawn !== before,
       was,
       { timeout: 15_000 }
     );
     await page.waitForTimeout(300);
   };
 
-  const preset = async (key) => {
+  const preset = async (key: string): Promise<void> => {
     await page.locator(`[data-preset="${key}"]`).click();
     await page.waitForTimeout(450);
   };
@@ -105,9 +106,13 @@ try {
   await page.locator('[data-stray]').click();
 
   await page.locator('[data-fill]').click();
-  await page.waitForFunction(() => document.querySelector('[data-landed] tbody').children.length > 0, null, {
-    timeout: 15_000,
-  });
+  await page.waitForFunction(
+    () => (document.querySelector('[data-landed] tbody')?.children.length ?? 0) > 0,
+    null,
+    {
+      timeout: 15_000,
+    }
+  );
   await page.waitForTimeout(300);
 
   await page.locator('#filling .split').screenshot({ path: path.join(DOCS, 'where-it-landed.png') });
@@ -134,14 +139,14 @@ try {
         .join('')
   );
 
-  await mark.waitForFunction(() => [...document.images].every((one) => one.complete));
+  await mark.waitForFunction(() => Array.from(document.images).every((one) => one.complete));
   await mark.screenshot({ path: path.join(DOCS, 'the-mark.png') });
   say('the-mark.png');
   await mark.close();
 
   await page.close();
 } catch (error) {
-  console.error(`\nThe pictures could not be retaken: ${error.message.split('\n')[0]}`);
+  console.error(`\nThe pictures could not be retaken: ${(error instanceof Error ? error.message : String(error)).split('\n')[0]}`);
   process.exitCode = 1;
 } finally {
   await browser.close();

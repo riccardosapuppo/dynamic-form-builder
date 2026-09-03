@@ -11,11 +11,20 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { flatten, nameFor, choicesOf, questionsIn } from '../src/flatten/attributes.js';
-import { AWKWARD, INTAKE_V1, INTAKE_V2 } from '../src/fixtures/forms.js';
+import { flatten, nameFor, choicesOf, questionsIn } from '../src/flatten/attributes.ts';
+import type { Form } from '../src/flatten/attributes.ts';
+import { AWKWARD, INTAKE_V1, INTAKE_V2 } from '../src/fixtures/forms.ts';
 
-const columns = (form) => flatten(form).attributes.map((one) => one.name);
-const named = (form, name) => flatten(form).attributes.find((one) => one.name === name);
+const columns = (form: Form): string[] => flatten(form).attributes.map((one) => one.name);
+
+/**
+ * One column by name.
+ *
+ * The `!` is the test saying it knows the column is there — every call sits
+ * under an assertion that would have failed first if it were not.
+ */
+const named = (form: Form, name: string) =>
+  flatten(form).attributes.find((one) => one.name === name)!;
 
 test('a name becomes a column by losing its punctuation and its accents', () => {
   assert.equal(nameFor('Peso (kg)'), 'Peso_kg');

@@ -7,8 +7,10 @@
  * than programs, and somebody who is not the author can write another one.
  */
 
+import type { Store } from '../store/db.ts';
+
 /** How many people answered a question at all. */
-export function howManyAnswered(kept, formId, column) {
+export function howManyAnswered(kept: Store, formId: number, column: string): number {
   return Number(
     kept.run(
       `SELECT COUNT(*) AS n
@@ -37,7 +39,7 @@ export function howManyAnswered(kept, formId, column) {
  * reason — so the count here is the count of answers that were actually
  * numbers, and it is knowable rather than assumed.
  */
-export function averageOf(kept, formId, column) {
+export function averageOf(kept: Store, formId: number, column: string): { average: number | null; of: number } {
   const said = kept.run(
     `SELECT AVG(a.as_number) AS avg, COUNT(a.as_number) AS n
        FROM answers a
@@ -56,7 +58,7 @@ export function averageOf(kept, formId, column) {
  * saved, so nothing here has to know that a checkbox is a set — which is the
  * point of having done it then.
  */
-export function howManyTicked(kept, formId, question, choice) {
+export function howManyTicked(kept: Store, formId: number, question: string, choice: string): number {
   return Number(
     kept.run(
       `SELECT COUNT(*) AS n
@@ -77,7 +79,7 @@ export function howManyTicked(kept, formId, question, choice) {
  * difference between "twelve per cent have coeliac disease" and "twelve per
  * cent of the half who were asked".
  */
-export function howManyWereOffered(kept, formId, column) {
+export function howManyWereOffered(kept: Store, formId: number, column: string): number {
   return Number(
     kept.run(
       `SELECT COUNT(*) AS n
@@ -91,7 +93,7 @@ export function howManyWereOffered(kept, formId, column) {
 }
 
 /** Which versions offered a question, and under what name in each. */
-export function askedIn(kept, formId, column) {
+export function askedIn(kept: Store, formId: number, column: string) {
   return kept.run(
     `SELECT v.number AS version, va.called AS called
        FROM version_attributes va
@@ -104,7 +106,7 @@ export function askedIn(kept, formId, column) {
 }
 
 /** What the form can be asked about, and what it cannot. */
-export function whatCanBeAsked(kept, formId) {
+export function whatCanBeAsked(kept: Store, formId: number) {
   return kept.run(
     `SELECT name, question, kind, type, choice, page, allowed, first_seen, last_seen
        FROM attributes
@@ -121,7 +123,7 @@ export function whatCanBeAsked(kept, formId) {
  * equivalent of — there, an answer to a question the form does not have is
  * simply a key nobody ever looks at.
  */
-export function whatCouldNotBePlaced(kept, formId) {
+export function whatCouldNotBePlaced(kept: Store, formId: number) {
   return kept.run(
     `SELECT u.called, u.why, COUNT(*) AS n
        FROM unplaced u
@@ -134,7 +136,7 @@ export function whatCouldNotBePlaced(kept, formId) {
 }
 
 /** How each answer found its question: exactly, normalised, or loosely. */
-export function howAnswersWereMatched(kept, formId) {
+export function howAnswersWereMatched(kept: Store, formId: number) {
   return kept.run(
     `SELECT a.matched, COUNT(*) AS n
        FROM answers a
@@ -153,7 +155,7 @@ export function howAnswersWereMatched(kept, formId) {
  * the question that is a `SELECT` over columns and a program over documents,
  * and it is the one somebody asks on the second day.
  */
-export function crossTab(kept, formId, down, across) {
+export function crossTab(kept: Store, formId: number, down: string, across: string) {
   return kept.run(
     `SELECT
         COALESCE(l.as_text, CAST(l.as_number AS TEXT), l.as_date) AS down,

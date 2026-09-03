@@ -10,7 +10,7 @@
  */
 
 /** Mulberry32: thirty-two bits of state, and the same forms every time. */
-function rolls(seed) {
+function rolls(seed: number): () => number {
   let state = seed >>> 0;
 
   return () => {
@@ -58,7 +58,7 @@ function build() {
       When: `20${String(15 + Math.floor(roll() * 10)).padStart(2, '0')}-0${1 + Math.floor(roll() * 9)}-1${Math.floor(roll() * 9)}`,
     }));
 
-    const answers = {
+    const answers: Record<string, unknown> = {
       Name: NAMES[n % NAMES.length],
       'Date of birth': `${2026 - age}-0${1 + Math.floor(roll() * 9)}-1${Math.floor(roll() * 9)}`,
       // Written without its accent, the way an export through a system that
@@ -119,7 +119,7 @@ function build() {
       answers[`Peso${String.fromCharCode(0x2010)}kg`] = weight;
     }
 
-    const strays = {};
+    const strays: Record<string, unknown> = {};
     if (n % 20 === 7) strays['Fiscal code'] = 'RSSMRA80A01H501U';
     if (n % 20 === 13) strays['Peso'] = weight;
 

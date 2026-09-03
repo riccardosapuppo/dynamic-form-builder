@@ -5,16 +5,23 @@
   "description": "A form is authored as a tree and asked about as a table. Everything difficult lives in the gap.",
   "author": "Riccardo Sapuppo",
   "type": "module",
-  "engines": { "node": ">=24" },
-  "scripts": {
-    "start": "node src/index.js",
-    "test": "node --test test/*.test.js",
-    "measure": "node tools/measure.mjs",
-    "check:screen": "node tools/through-the-screen.mjs",
-    "check:serving": "node tools/how-it-is-served.mjs",
-    "check:mark": "node tools/check-mark.mjs",
-    "screenshots": "node tools/screenshots.mjs"
+  "engines": {
+    "node": ">=24"
   },
-  "devDependencies": { "playwright-core": "^1.48.0" },
+  "scripts": {
+    "start": "node src/index.ts",
+    "test": "node --test test/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "measure": "node tools/measure.ts",
+    "check:screen": "node tools/through-the-screen.ts",
+    "check:serving": "node tools/how-it-is-served.ts",
+    "check:mark": "node tools/check-mark.ts",
+    "screenshots": "node tools/screenshots.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "playwright-core": "^1.48.0",
+    "typescript": "^5.9.0"
+  },
   "license": "MIT"
 }
