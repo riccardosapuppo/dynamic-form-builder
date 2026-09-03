@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dynamic Form Builder — a tree, and the table it becomes</title>
+    <link rel="icon" href="/mark.svg" type="image/svg+xml" />
+    <!-- The same ground as the favicon and the stylesheet. A tab strip in one
+         colour and an icon in another is the sort of thing nobody reports and
+         everybody notices. -->
+    <meta name="theme-color" content="#14232b" />
+    <link rel="stylesheet" href="/console.css" />
+  </head>
+
+  <body>
+    <header class="top">
+      <!--
+        The mark. `data-mark` is how `npm run check:mark` knows WHICH drawing on
+        the page is the mark — a check that compared every shape anywhere would
+        report a drift the first time a second drawing appeared, which is a
+        correct alarm about the wrong thing.
+      -->
+      <svg data-mark class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <rect width="32" height="32" rx="8" fill="var(--mark-ground)" />
+        <circle cx="9" cy="9" r="2.2" fill="var(--mark-accent)" />
+        <circle cx="9" cy="16" r="2.2" fill="var(--mark-accent)" />
+        <circle cx="9" cy="23" r="2.2" fill="var(--mark-accent)" />
+        <rect x="17" y="7" width="8" height="4" rx="1.2" fill="var(--mark-paper)" opacity="0.9" />
+        <rect x="17" y="14" width="8" height="4" rx="1.2" fill="var(--mark-paper)" opacity="0.9" />
+        <rect x="17" y="21" width="8" height="4" rx="1.2" fill="var(--mark-paper)" opacity="0.9" />
+      </svg>
+
+      <div class="titling">
+        <h1>Dynamic Form Builder</h1>
+        <p class="thesis">
+          A form is authored as a <b>tree</b> and asked about as a <b>table</b>.
+          Everything difficult lives in the gap.
+        </p>
+      </div>
+
+      <a class="claim" href="#measurement" data-claim>
+        <span class="claim-figure" data-claim-figure>—</span>
+        <span class="claim-says">the measurement, below</span>
+      </a>
+    </header>
+
+    <main>
+      <!-- ── 1. the gap ─────────────────────────────────────────────────── -->
+      <section class="panel" id="gap">
+        <div class="panel-head">
+          <h2>1 · The tree, and the table it becomes</h2>
+          <p>
+            Edit the definition. The columns change under it as you type — including
+            the questions that produce no column at all, and why.
+          </p>
+        </div>
+
+        <nav class="presets" data-presets aria-label="Form definitions"></nav>
+        <p class="preset-says" data-preset-says></p>
+
+        <div class="split">
+          <div class="side">
+            <div class="side-head">
+              <h3>The definition</h3>
+              <span class="tally" data-editor-tally></span>
+            </div>
+
+            <textarea
+              class="editor"
+              data-editor
+              spellcheck="false"
+              aria-label="The form definition, as JSON"
+            ></textarea>
+
+            <p class="bad" data-editor-bad hidden></p>
+          </div>
+
+          <div class="side">
+            <div class="side-head">
+              <h3>What it becomes</h3>
+              <span class="tally" data-columns-tally></span>
+            </div>
+
+            <div class="scrolls">
+              <table class="grid" data-columns>
+                <thead>
+                  <tr>
+                    <th>column</th>
+                    <th>from the question</th>
+                    <th>kind</th>
+                    <th>holds</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+
+            <div class="notes" data-notfit></div>
+            <div class="notes" data-trouble></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 2. a second version ────────────────────────────────────────── -->
+      <section class="panel" id="versions">
+        <div class="panel-head">
+          <h2>2 · Save it as a version</h2>
+          <p>
+            The store already holds version 1. Save the definition on the left over it
+            and it works out, question by question, what changed — and an attribute
+            belongs to the <em>form</em>, so a question that is still being asked keeps
+            its column and every answer already in it.
+          </p>
+        </div>
+
+        <div class="doing">
+          <button class="do" data-save>Save this definition as the next version</button>
+          <button class="do quiet" data-reset>Put the store back to version 1</button>
+          <span class="tally" data-store-tally></span>
+        </div>
+
+        <div class="changes" data-changes></div>
+      </section>
+
+      <!-- ── 3. fill it in ──────────────────────────────────────────────── -->
+      <section class="panel" id="filling">
+        <div class="panel-head">
+          <h2>3 · Fill it in, and watch each answer land</h2>
+          <p>
+            This form is rendered from the version the store is <em>on</em>, not from
+            the editor — answers go into that version. Rename a question, type a key
+            by hand, add one the form does not ask: every answer says which column it
+            reached and which rung of the ladder found it.
+          </p>
+        </div>
+
+        <div class="split">
+          <div class="side">
+            <div class="side-head">
+              <h3>The form</h3>
+              <span class="tally" data-form-tally></span>
+            </div>
+
+            <form class="rendered" data-form></form>
+
+            <div class="doing">
+              <button class="do" data-fill>Submit this</button>
+              <button class="do quiet" data-stray>Add an answer the form does not ask</button>
+            </div>
+          </div>
+
+          <div class="side">
+            <div class="side-head">
+              <h3>Where every answer went</h3>
+              <span class="tally" data-landed-tally></span>
+            </div>
+
+            <div class="scrolls">
+              <table class="grid" data-landed>
+                <thead>
+                  <tr>
+                    <th>column</th>
+                    <th>value</th>
+                    <th>found</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+
+            <div class="notes" data-aftermath></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 4. the measurement ─────────────────────────────────────────── -->
+      <section class="panel" id="measurement">
+        <div class="panel-head">
+          <h2>4 · The measurement</h2>
+          <p>
+            The same hundred and twenty submissions, stored three ways, asked the same
+            eight questions. Not speed — <b>whether the answer is right, and whether a
+            wrong answer announces itself.</b> Every figure here is what
+            <code>npm run measure</code> prints, computed the same way.
+          </p>
+        </div>
+
+        <div class="scrolls">
+          <table class="grid measure" data-measure>
+            <thead>
+              <tr>
+                <th>the question</th>
+                <th>the answer</th>
+                <th>one JSON document each</th>
+                <th>flattened</th>
+                <th>flattened, with ids</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="findings" data-findings></div>
+      </section>
+
+      <footer class="foot">
+        <p>
+          Every form, every question and every submission in this repository is invented.
+          No clinic, no patient and no real form appears anywhere in it. Nothing is
+          written to disk: the store is in memory and goes when this process stops.
+        </p>
+      </footer>
+    </main>
+
+    <script type="module" src="/console.js"></script>
+  </body>
+</html>

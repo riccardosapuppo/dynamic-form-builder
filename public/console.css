@@ -1,0 +1,685 @@
+/**
+ * The console.
+ *
+ * The page is a ledger: a tree on one side, a table on the other, and hairlines
+ * rather than boxes so the two sides read as one sheet. Everything that is data
+ * is set in monospace and everything that is an argument is set in prose, which
+ * is the only typographic decision here and it is doing all the work — the
+ * point of the project is the difference between the two.
+ *
+ * Two working colours, and they mean something:
+ *
+ *   `--accent`   this became a column
+ *   `--warn`     this could not, or something about it is worth saying
+ *
+ * Nothing else is coloured. A page that tints six things is a page where none
+ * of them is a signal.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  --paper: #f2f5f4;
+  --paper-sunk: #e7ebea;
+  --ink: #14232b;
+  --ink-soft: #4a5c63;
+  --ink-faint: #8899a0;
+  --line: #cdd6d5;
+  --accent: #0f7a68;
+  --accent-wash: #dff0ec;
+  --warn: #a8552a;
+  --warn-wash: #f6e7dd;
+
+  /**
+   * The mark keeps its own colours in both themes.
+   *
+   * A logo that follows the theme is a logo the favicon cannot follow --
+   * a favicon is loaded outside the page and inherits nothing, so the tab
+   * would go one way and the header the other. `npm run check:mark` compares
+   * these three against each other for exactly that reason.
+   */
+  --mark-ground: #14232b;
+  --mark-accent: #7fd8c4;
+  --mark-paper: #f2f5f4;
+
+  --prose: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --code: ui-monospace, "Cascadia Mono", "SF Mono", "Menlo", "Consolas", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #101a1e;
+    --paper-sunk: #16232a;
+    --ink: #e3ecea;
+    --ink-soft: #a3b4b7;
+    --ink-faint: #6d8087;
+    --line: #26383f;
+    --accent: #6ecdb6;
+    --accent-wash: #10312c;
+    --warn: #e0a173;
+    --warn-wash: #33231a;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  * {
+    transition: none !important;
+  }
+}
+
+body {
+  margin: 0;
+  padding: 0 clamp(1rem, 4vw, 3.5rem) 4rem;
+  background: var(--paper);
+  color: var(--ink);
+  font: 15px/1.55 var(--prose);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── the top ─────────────────────────────────────────────────────────────── */
+
+.top {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0 1rem;
+  align-items: center;
+  max-width: 78rem;
+  margin: 0 auto;
+  padding: 1.6rem 0 1.4rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.mark {
+  width: 40px;
+  height: 40px;
+}
+
+.titling h1 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+}
+
+.thesis {
+  margin: 0.15rem 0 0;
+  max-width: 46rem;
+  color: var(--ink-soft);
+  font-size: 0.93rem;
+}
+
+.thesis b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.claim {
+  display: grid;
+  justify-items: end;
+  gap: 0.1rem;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--accent-wash);
+  color: inherit;
+  text-decoration: none;
+}
+
+.claim:hover,
+.claim:focus-visible {
+  border-color: var(--accent);
+}
+
+.claim-figure {
+  font: 600 0.95rem/1.2 var(--code);
+  color: var(--accent);
+}
+
+.claim-says {
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+
+/* ── panels ──────────────────────────────────────────────────────────────── */
+
+main {
+  max-width: 78rem;
+  margin: 0 auto;
+}
+
+.panel {
+  padding: 2.2rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.panel-head h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  font-weight: 620;
+  letter-spacing: 0.01em;
+}
+
+.panel-head p {
+  margin: 0;
+  max-width: 58rem;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.panel-head code {
+  font: 0.85em var(--code);
+  background: var(--paper-sunk);
+  padding: 0.05em 0.35em;
+  border-radius: 3px;
+}
+
+/* ── the presets ─────────────────────────────────────────────────────────── */
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 1.2rem 0 0.5rem;
+}
+
+.presets button {
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-soft);
+  font: 0.8rem/1.2 var(--code);
+  cursor: pointer;
+}
+
+.presets button:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.presets button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-wash);
+  color: var(--accent);
+}
+
+.preset-says {
+  margin: 0 0 1.1rem;
+  min-height: 1.3rem;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+/* ── the split ───────────────────────────────────────────────────────────── */
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 1.4rem;
+  align-items: start;
+}
+
+@media (max-width: 62rem) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.side {
+  min-width: 0;
+}
+
+.side-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 0.6rem;
+}
+
+.side-head h3 {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.tally {
+  font: 0.78rem var(--code);
+  color: var(--ink-soft);
+}
+
+.editor {
+  width: 100%;
+  height: 30rem;
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--paper-sunk);
+  color: var(--ink);
+  font: 12.5px/1.6 var(--code);
+  resize: vertical;
+  tab-size: 2;
+}
+
+.editor:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* ── tables ──────────────────────────────────────────────────────────────── */
+
+.scrolls {
+  overflow-x: auto;
+  max-height: 30rem;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+
+.grid {
+  width: 100%;
+  border-collapse: collapse;
+  font: 12.5px/1.5 var(--code);
+}
+
+.grid th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper-sunk);
+  color: var(--ink-faint);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.grid td {
+  padding: 0.42rem 0.6rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.grid tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.grid tbody tr.lit {
+  background: var(--accent-wash);
+}
+
+.grid .name {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.grid .soft {
+  color: var(--ink-faint);
+}
+
+.grid .choice::before {
+  content: '·';
+  margin: 0 0.3em;
+  color: var(--ink-faint);
+}
+
+/* ── notes under a table ─────────────────────────────────────────────────── */
+
+.notes {
+  margin-top: 0.8rem;
+}
+
+.notes:empty {
+  display: none;
+}
+
+.note {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 0.6rem;
+  padding: 0.55rem 0.7rem;
+  border-left: 2px solid var(--warn);
+  border-radius: 0 5px 5px 0;
+  background: var(--warn-wash);
+  margin-bottom: 0.4rem;
+}
+
+.note.good {
+  border-left-color: var(--accent);
+  background: var(--accent-wash);
+}
+
+.note-what {
+  font: 12px/1.5 var(--code);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.note-why {
+  font-size: 0.84rem;
+  color: var(--ink-soft);
+}
+
+.note-why b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* ── doing things ────────────────────────────────────────────────────────── */
+
+.doing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 1.2rem 0 0;
+}
+
+.do {
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--paper);
+  font: 600 0.83rem/1.2 var(--prose);
+  cursor: pointer;
+}
+
+.do:hover {
+  filter: brightness(1.08);
+}
+
+.do.quiet {
+  border-color: var(--line);
+  background: transparent;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+.do.quiet:hover {
+  border-color: var(--warn);
+  color: var(--warn);
+  filter: none;
+}
+
+.do:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* ── what changed between versions ───────────────────────────────────────── */
+
+.changes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.8rem;
+  margin-top: 1.2rem;
+}
+
+.changes:empty {
+  display: none;
+}
+
+.change {
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+
+.change h4 {
+  margin: 0 0 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.change ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font: 12px/1.7 var(--code);
+}
+
+.change li.none {
+  color: var(--ink-faint);
+  font-family: var(--prose);
+  font-size: 0.84rem;
+}
+
+.change .was {
+  color: var(--ink-faint);
+  text-decoration: line-through;
+}
+
+.change .how {
+  color: var(--ink-faint);
+  font-family: var(--prose);
+  font-size: 0.78rem;
+}
+
+/* ── the rendered form ───────────────────────────────────────────────────── */
+
+.rendered {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--paper-sunk);
+  max-height: 30rem;
+  overflow-y: auto;
+}
+
+.question {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.question > label,
+.question > .legend {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.question .kind {
+  margin-left: 0.4em;
+  font: 11px var(--code);
+  font-weight: 400;
+  color: var(--ink-faint);
+}
+
+.question input[type='text'],
+.question input[type='number'],
+.question input[type='date'],
+.question select,
+.question textarea {
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--paper);
+  color: var(--ink);
+  font: 12.5px var(--code);
+}
+
+.question textarea {
+  min-height: 3.4rem;
+  resize: vertical;
+}
+
+.ticks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
+.tick {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font: 12px var(--code);
+  font-weight: 400;
+}
+
+.panelled {
+  padding: 0.7rem 0.8rem;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.panelled > .legend {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.wont-fit {
+  padding: 0.5rem 0.7rem;
+  border-left: 2px solid var(--warn);
+  background: var(--warn-wash);
+  border-radius: 0 5px 5px 0;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.wont-fit b {
+  color: var(--ink);
+  font: 600 12px var(--code);
+}
+
+/* ── the measurement ─────────────────────────────────────────────────────── */
+
+.measure td:first-child {
+  font-family: var(--prose);
+  font-size: 0.86rem;
+  min-width: 18rem;
+}
+
+.verdict {
+  display: inline-block;
+  min-width: 5.2rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.verdict.right {
+  background: var(--accent-wash);
+  color: var(--accent);
+}
+
+.verdict.wrong {
+  background: var(--warn-wash);
+  color: var(--warn);
+}
+
+.verdict.cannot {
+  background: var(--paper-sunk);
+  color: var(--ink-faint);
+}
+
+.verdict-said {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.findings {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.4rem;
+}
+
+.finding {
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+
+.finding h4 {
+  margin: 0 0 0.3rem;
+  font-size: 0.88rem;
+  font-weight: 620;
+}
+
+.finding p {
+  margin: 0 0 0.6rem;
+  max-width: 62rem;
+  color: var(--ink-soft);
+  font-size: 0.86rem;
+}
+
+.finding ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.finding li {
+  display: grid;
+  grid-template-columns: 8rem 1fr;
+  gap: 0.6rem;
+  font-size: 0.84rem;
+  color: var(--ink-soft);
+}
+
+.finding .who {
+  font: 600 12px var(--code);
+  color: var(--ink);
+}
+
+/* ── the rest ────────────────────────────────────────────────────────────── */
+
+.bad {
+  margin: 0.6rem 0 0;
+  padding: 0.5rem 0.7rem;
+  border-left: 2px solid var(--warn);
+  background: var(--warn-wash);
+  border-radius: 0 5px 5px 0;
+  font: 12px/1.5 var(--code);
+  color: var(--warn);
+}
+
+.foot {
+  padding: 2rem 0 0;
+  color: var(--ink-faint);
+  font-size: 0.8rem;
+  max-width: 56rem;
+}
+
+.foot p {
+  margin: 0;
+}

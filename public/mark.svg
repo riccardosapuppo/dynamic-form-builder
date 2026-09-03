@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!--
+    The same mark as the one inlined in index.html: three questions on the left,
+    three columns on the right. The whole project in six shapes.
+
+    Two files because a favicon is loaded outside the page and inherits none of
+    its colours, so its own have to be literal. `npm run check:mark` compares
+    the geometry and ignores the colours, which are the part that has to differ.
+  -->
+  <rect width="32" height="32" rx="8" fill="#14232b"/>
+  <circle cx="9" cy="9" r="2.2" fill="#7fd8c4"/>
+  <circle cx="9" cy="16" r="2.2" fill="#7fd8c4"/>
+  <circle cx="9" cy="23" r="2.2" fill="#7fd8c4"/>
+  <rect x="17" y="7" width="8" height="4" rx="1.2" fill="#f2f5f4" opacity="0.9"/>
+  <rect x="17" y="14" width="8" height="4" rx="1.2" fill="#f2f5f4" opacity="0.9"/>
+  <rect x="17" y="21" width="8" height="4" rx="1.2" fill="#f2f5f4" opacity="0.9"/>
+</svg>
