@@ -1,0 +1,163 @@
+name: checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # Every job here has a timeout. One that hangs is worse than one that fails:
+  # it stays amber for six hours and nobody looks at it, while a red one sends
+  # an email.
+  the-claim:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # The README says "Node 24 or newer", so both ends of that are run.
+        # A declared minimum nobody exercises is a guess, and node:sqlite is
+        # exactly the sort of thing that moves between majors.
+        node: ['24', '25']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - run: npm ci
+
+      - name: the parts
+        run: npm test
+
+      - name: the claim
+        # Exits non-zero if the flattened store with ids gets any of the eight
+        # questions wrong. That is the sentence the README opens with, so it is
+        # the thing that has to be able to fail here.
+        run: npm run measure
+
+      - name: the mark in the header and the mark in the tab
+        run: npm run check:mark
+
+      - name: nobody can be handed yesterday's page
+        run: npm run check:serving
+
+      - name: it answers, over HTTP, from a standing start
+        # The README opens with `npm start`. This is that command, and requests
+        # to the thing it starts — the check that catches a project which builds
+        # and tests and does not run.
+        run: |
+          PORT=4099 node src/index.js --no-open &
+          service=$!
+          trap 'kill $service 2>/dev/null || true' EXIT
+
+          for try in $(seq 1 100); do
+            if curl -sf "http://127.0.0.1:4099/api/health" > /dev/null; then break; fi
+            sleep 0.2
+          done
+
+          # Parsed, not grepped.
+          #
+          # A sibling project's version of this looked for the text '"ok":true'
+          # while the service answers in indented JSON — '"ok": true', with a
+          # space. It went red while the service was answering perfectly, which
+          # is the most expensive kind of red: it sends you to the service.
+          curl -sf "http://127.0.0.1:4099/api/health" \
+            | node -e 'const said = JSON.parse(require("fs").readFileSync(0)); if (said.ok !== true) { console.error("it did not answer about itself:", said); process.exit(1); }'
+
+          # And the argument, over HTTP: send a definition, get columns back.
+          # `Peso (kg)` has to arrive as `Peso_kg` or the naming rules are not
+          # doing the one thing the measurement depends on.
+          became=$(curl -sf -X POST "http://127.0.0.1:4099/api/flatten" \
+            -H 'content-type: application/json' \
+            -d '{"definition":{"pages":[{"name":"p","elements":[{"kind":"number","name":"Peso (kg)"}]}]}}' \
+            | node -pe 'JSON.parse(require("fs").readFileSync(0)).attributes[0].name')
+
+          echo "Peso (kg) became: $became"
+
+          if [ "$became" != "Peso_kg" ]; then
+            echo "It should have become Peso_kg."
+            exit 1
+          fi
+
+  # Driving the console needs a browser, and a runner has Chrome rather than
+  # the Edge this was written against. It is a separate job because it is the
+  # slow one, and because a red here means something different from a red
+  # above: the parts are fine and the screen is not.
+  through-the-screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - run: npm ci
+
+      - name: the console, driven in a real browser
+        # --channel chrome rather than leaving it to find one. The tool would
+        # fall back on its own and say which it used, but a CI step that picks
+        # its browser silently is a CI step whose green nobody can reproduce.
+        run: npm run check:screen -- --channel chrome
+
+  # A separate job again, and a short one: this is the check that the
+  # repository is the repository, rather than a working copy somebody pushed.
+  the-repository:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: every picture the README asks for is in the repository
+        run: |
+          missing=0
+
+          # Read out of the README rather than listed here. A list in two places
+          # is a list that goes stale in one of them, silently, and the one that
+          # goes stale is always the copy.
+          for picture in $(grep -o 'docs/[a-z-]*\.png' README.md | sort -u); do
+            if [ ! -f "$picture" ]; then
+              echo "The README shows $picture and it is not in the repository."
+              missing=$((missing + 1))
+            fi
+          done
+
+          if [ "$missing" -eq 0 ]; then
+            echo "Every picture the README shows is here."
+          fi
+
+          exit $missing
+
+      - name: every command the README gives exists as a script
+        run: |
+          bad=0
+
+          # Only the commands in code blocks, not every `npm run` in prose.
+          # A sibling project's version of this matched the words "npm could
+          # install" in a sentence and went looking for a script called
+          # `could`.
+          for name in $(sed -n '/^```/,/^```/p' README.md \
+                        | grep -oE '^npm run [a-z:]+' \
+                        | awk '{print $3}' | sort -u); do
+            if ! node -pe "Object.keys(require('./package.json').scripts).includes('$name')" | grep -q true; then
+              echo "The README gives 'npm run $name' and package.json has no such script."
+              bad=$((bad + 1))
+            fi
+          done
+
+          if [ "$bad" -eq 0 ]; then
+            echo "Every npm run in the README exists."
+          fi
+
+          exit $bad
