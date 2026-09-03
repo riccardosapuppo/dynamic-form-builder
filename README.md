@@ -42,27 +42,36 @@ green. So does the console, on the page, without a terminal.
 node --version        # v24.19.0 here; anything 24.x or above will do
 ```
 
-Node 24 because the store is [`node:sqlite`](https://nodejs.org/api/sqlite.html),
-which is in the runtime and unflagged from 24. That is the whole reason for the
-floor. The CI runs the tests on 24 and on 25, so the claim is checked rather
-than asserted.
+Node 24 for two reasons, and both are about not installing things. The store is
+[`node:sqlite`](https://nodejs.org/api/sqlite.html), which is in the runtime and
+unflagged from 24. And **this is TypeScript that Node runs directly**: from 24
+the runtime strips type annotations at load, so `node src/index.ts` is the whole
+story — no transpiler, no build step, no output directory holding a stale copy
+of the source.
+
+`tsconfig.json` sets `erasableSyntaxOnly`, which makes `tsc` reject anything
+Node cannot strip. So `npm run typecheck` is not only a check on the types: it
+is the check that this project still runs without a build. CI does both on 24
+and on 25, so the floor is exercised rather than asserted.
 
 **No external services.** No database to install, no API key, no account, no
 network access after `npm install`. Every form, question and submission is
 invented in `src/fixtures/`, and the store is in memory — nothing is written to
 disk and nothing survives the process.
 
-**One dependency, and only for the checks.** `playwright-core` is a
-`devDependency` used by `npm run check:screen` and `npm run screenshots`, which
-drive a real browser. It is about 2 MB. It expects Microsoft Edge, which is
+**Three dependencies, none of them at run time.** `typescript` and
+`@types/node` are for `npm run typecheck` and for whatever editor you open this
+in; nothing imports them and the program never loads them. `playwright-core` is
+used by `npm run check:screen` and `npm run screenshots`, which drive a real
+browser. It is about 2 MB. It expects Microsoft Edge, which is
 already on Windows; on another platform pass `--show` or point it at a Chromium
 you have. If it is missing, those two commands exit **2** and say so — neither
 passing nor failing, because a check that did not run is not a check that
 passed. Everything else — the tests, the measurement, the service, the page —
 runs with no dependencies at all.
 
-**Disk and network.** `npm install` fetches one package: about 2 MB
-downloaded, about 5 MB on disk including `node_modules`. The repository itself
+**Disk and network.** `npm install` fetches three packages: about 30 MB on
+disk including `node_modules`, most of it the TypeScript compiler. The repository itself
 is under 3 MB, most of it the pictures in `docs/`.
 
 **To put the machine back:** delete the folder. Nothing is installed globally,
@@ -89,6 +98,7 @@ Everything below is also a command:
 
 ```
 npm test                 56 tests, no browser, about three seconds
+npm run typecheck        the types, and that Node can still run this without a build
 npm run measure          the three stores, the eight questions, and the findings
 npm run check:screen     drives the console in a real browser — 49 checks
 npm run check:serving    what the service actually sends — 37 checks

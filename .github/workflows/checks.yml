@@ -37,6 +37,12 @@ jobs:
       - name: the parts
         run: npm test
 
+      - name: the types
+        # `tsc` produces nothing here: there is no build. It is a checker, and
+        # `erasableSyntaxOnly` in tsconfig.json makes it also the guarantee that
+        # Node can still run these files without one.
+        run: npm run typecheck
+
       - name: the claim
         # Exits non-zero if the flattened store with ids gets any of the eight
         # questions wrong. That is the sentence the README opens with, so it is
@@ -54,7 +60,7 @@ jobs:
         # to the thing it starts — the check that catches a project which builds
         # and tests and does not run.
         run: |
-          PORT=4099 node src/index.js --no-open &
+          PORT=4099 node src/index.ts --no-open &
           service=$!
           trap 'kill $service 2>/dev/null || true' EXIT
 
@@ -148,7 +154,7 @@ jobs:
           # install" in a sentence and went looking for a script called
           # `could`.
           for name in $(sed -n '/^```/,/^```/p' README.md \
-                        | grep -oE '^npm run [a-z:]+' \
+                        | grep -oE '^npm run [a-z:-]+' \
                         | awk '{print $3}' | sort -u); do
             if ! node -pe "Object.keys(require('./package.json').scripts).includes('$name')" | grep -q true; then
               echo "The README gives 'npm run $name' and package.json has no such script."
