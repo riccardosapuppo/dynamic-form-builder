@@ -103,6 +103,7 @@ npm run measure          the three stores, the eight questions, and the findings
 npm run check:screen     drives the console in a real browser — 49 checks
 npm run check:serving    what the service actually sends — 37 checks
 npm run check:mark       the mark in the header and the mark in the tab
+npm run check:paths      every path this README names, looked up on disk
 npm run screenshots      regenerates every picture in docs/
 ```
 
@@ -189,7 +190,7 @@ is exactly why they are the most useful thing this produces.
 ![Eight questions, three stores](docs/the-measurement.png)
 
 Three stores, identical input, eight questions somebody would ask in the first
-week. The expected answers are computed in `src/measure/truth.js` by looping
+week. The expected answers are computed in `src/measure/truth.ts` by looping
 over the fixture array in plain JavaScript — no query, no import from the store
 or from `src/answers/`, nothing that could be wrong in the same way the thing
 being measured is wrong. A test checks that file's imports for exactly that, and
@@ -256,20 +257,20 @@ A list of real limits, because a portfolio piece without one is a brochure.
 ## How it is put together
 
 ```
-src/form/kinds.js          what each kind of question is, and how a value reads
-src/flatten/attributes.js  the tree becomes columns; what cannot, and why
-src/flatten/match.js       an answer finds its column: exact, normalised, loose
-src/flatten/identity.js    is this new question one the form already had?
-src/store/db.js            forms, versions, attributes, submissions, answers
-src/answers/ask.js         the questions somebody asks, each one a SELECT
-src/blob/documents.js      the other way: one JSON document per submission
-src/measure/truth.js       the right answers, in plain JavaScript
-src/measure/questions.js   the eight questions, and how each store is asked
-src/http/api.js            the service, node:http and nothing else
+src/form/kinds.ts          what each kind of question is, and how a value reads
+src/flatten/attributes.ts  the tree becomes columns; what cannot, and why
+src/flatten/match.ts       an answer finds its column: exact, normalised, loose
+src/flatten/identity.ts    is this new question one the form already had?
+src/store/db.ts            forms, versions, attributes, submissions, answers
+src/answers/ask.ts         the questions somebody asks, each one a SELECT
+src/blob/documents.ts      the other way: one JSON document per submission
+src/measure/truth.ts       the right answers, in plain JavaScript
+src/measure/questions.ts   the eight questions, and how each store is asked
+src/http/api.ts            the service, node:http and nothing else
 public/                    the console: no framework, no build step
 ```
 
-`match.js` and `identity.js` are deliberately separate and were once the same
+`match.ts` and `identity.ts` are deliberately separate and were once the same
 code. They are opposite disciplines. Matching an **answer** to a question may be
 generous, because the alternative to a loose match is a lost answer. Deciding
 whether a **question** is one the form already had must not be, because a wrong
@@ -294,7 +295,7 @@ was a table question. The work was the layer in between.
 **This repository contains no SurveyJS and no third-party code at all**, which
 is a deliberate difference rather than an omission. Vendoring a form library
 here would have added a hundred megabytes of dependencies and hidden the only
-part worth reading: the definition format in `src/fixtures/forms.js` is a
+part worth reading: the definition format in `src/fixtures/forms.ts` is a
 simplified one of my own, in the same shape — pages, elements, panels, choices —
 and the flattening does not know or care which library produced it. What the
 original did with a real SurveyJS schema, this does with a schema you can read

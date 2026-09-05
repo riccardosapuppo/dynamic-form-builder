@@ -16,6 +16,7 @@
     "check:screen": "node tools/through-the-screen.ts",
     "check:serving": "node tools/how-it-is-served.ts",
     "check:mark": "node tools/check-mark.ts",
+    "check:paths": "node tools/every-path-it-names.ts",
     "screenshots": "node tools/screenshots.ts"
   },
   "devDependencies": {

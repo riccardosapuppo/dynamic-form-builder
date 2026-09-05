@@ -125,25 +125,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: every picture the README asks for is in the repository
-        run: |
-          missing=0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
 
-          # Read out of the README rather than listed here. A list in two places
-          # is a list that goes stale in one of them, silently, and the one that
-          # goes stale is always the copy.
-          for picture in $(grep -o 'docs/[a-z-]*\.png' README.md | sort -u); do
-            if [ ! -f "$picture" ]; then
-              echo "The README shows $picture and it is not in the repository."
-              missing=$((missing + 1))
-            fi
-          done
-
-          if [ "$missing" -eq 0 ]; then
-            echo "Every picture the README shows is here."
-          fi
-
-          exit $missing
+      - name: every path the README names is in the repository
+        # This was a loop over the pictures, in shell, right here — read out of
+        # the README rather than listed, because a list in two places goes stale
+        # in the copy. The pictures were never the only paths promised: the map
+        # of the source spent a while naming files that had been renamed, and
+        # nothing here noticed. One check now looks up every path in the file.
+        #
+        # No `npm ci` before it: the tool imports nothing but node: modules, and
+        # a job that installs the world to read a README is a job nobody keeps.
+        run: npm run check:paths
 
       - name: every command the README gives exists as a script
         run: |
