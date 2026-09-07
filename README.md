@@ -284,9 +284,6 @@ happened.
 
 ## About the original
 
-The original was built for a client and lives in a private repository. This is
-an independent reimplementation, written from scratch with synthetic data.
-
 That original was a **SurveyJS** application: the client's staff built forms in
 the SurveyJS Creator, submissions arrived as SurveyJS JSON, and the reporting
 was the problem — the answers were documents and every question anybody asked
@@ -305,6 +302,19 @@ The two things this has that the original did not: the **measurement**, which
 puts a number on the claim rather than asserting it, and the fact that a
 question renamed with an id keeps its answers, which the original learned the
 hard way and after the fact.
+
+## Production reconstruction
+
+This repository is an independent reconstruction of a production system I
+designed and developed.
+
+Confidentiality and intellectual property constraints mean the original cannot
+be published. It was rebuilt from scratch so it could be shown and run,
+preserving the core architecture, workflows and technical challenges of the
+production solution, with newly written code and fictional data.
+
+No proprietary source code, confidential data or client assets from the
+original system are included in this repository.
 
 ---
 
