@@ -6,15 +6,15 @@ lives in the gap.**
 Somebody drags questions around until the form looks right. It is a tree:
 pages hold panels, panels hold questions, a checkbox holds a list of choices, a
 matrix holds a grid, a repeating group holds as many answers as the person
-filling it in decided to add. Then a submission arrives and the form is over —
-and from that moment every question anybody asks is a table question. How many
-answered it. What is the average. How many of the people who were *shown* it
-ticked the third choice. Has this question been asked since March.
+filling it in decided to add. Then a submission arrives, the form is over, and
+every question anybody asks after that is a table question. How many answered
+it. What is the average. How many of the people who were *shown* it ticked the
+third choice. Has this question been asked since March.
 
 This is a small system that takes the tree and works out the table: what
 becomes a column, what cannot, what happens to the answers when somebody
-renames a question in version two, and — the part that took the longest — how
-to be honest about the answers it could not place.
+renames a question in version two, and (the part that took longest) how to be
+honest about the answers it could not place.
 
 It comes with a **measurement**, and the measurement is the point. The same
 hundred and twenty submissions are stored three ways and asked the same eight
@@ -45,9 +45,9 @@ node --version        # v24.19.0 here; anything 24.x or above will do
 Node 24 for two reasons, and both are about not installing things. The store is
 [`node:sqlite`](https://nodejs.org/api/sqlite.html), which is in the runtime and
 unflagged from 24. And **this is TypeScript that Node runs directly**: from 24
-the runtime strips type annotations at load, so `node src/index.ts` is the whole
-story — no transpiler, no build step, no output directory holding a stale copy
-of the source.
+the runtime strips type annotations at load, so `node src/index.ts` needs no
+transpiler, no build step, no output directory holding a stale copy of the
+source.
 
 `tsconfig.json` sets `erasableSyntaxOnly`, which makes `tsc` reject anything
 Node cannot strip. So `npm run typecheck` is not only a check on the types: it
@@ -56,8 +56,8 @@ and on 25, so the floor is exercised rather than asserted.
 
 **No external services.** No database to install, no API key, no account, no
 network access after `npm install`. Every form, question and submission is
-invented in `src/fixtures/`, and the store is in memory — nothing is written to
-disk and nothing survives the process.
+invented in `src/fixtures/`, and the store is in memory, so nothing is written
+to disk or survives the process.
 
 **Three dependencies, none of them at run time.** `typescript` and
 `@types/node` are for `npm run typecheck` and for whatever editor you open this
@@ -65,7 +65,7 @@ in; nothing imports them and the program never loads them. `playwright-core` is
 used by `npm run check:screen` and `npm run screenshots`, which drive a real
 browser. It is about 2 MB. It expects Microsoft Edge, which is
 already on Windows; on another platform pass `--show` or point it at a Chromium
-you have. If it is missing, those two commands exit **2** and say so — neither
+you have. If it is missing, those two commands exit **2** and say so, neither
 passing nor failing, because a check that did not run is not a check that
 passed. Everything else — the tests, the measurement, the service, the page —
 runs with no dependencies at all.
@@ -129,7 +129,7 @@ A checkbox goes the other way: one question becomes one column per choice,
 because "how many ticked hypertension" is a question about hypertension.
 Hovering one of them lights the rest.
 
-There is a preset for a form somebody typed in a hurry — two questions that
+There is a preset for a form somebody typed in a hurry: two questions that
 collide on the same column name, one whose name is nothing but punctuation, a
 kind nobody has heard of, and a list of choices with nothing in it. None of
 those stops the form being saved and every one of them is named:
@@ -143,7 +143,7 @@ still being asked keeps its column and every answer already in it; a question
 that is no longer asked is *withdrawn*, never deleted, because people answered
 it and a form not asking a question does not unask it.
 
-Then somebody renames a question. `Anything else` becomes `Other notes` — the
+Then somebody renames a question. `Anything else` becomes `Other notes`, the
 same question in different words, with nothing in the two names that any rule
 could match on:
 
@@ -159,8 +159,7 @@ One line in the definition, and it is the difference between a rename that
 keeps its answers and one that quietly starts again. **The flattening does not
 fix versioning. An id fixes versioning, and the flattening is what makes the id
 worth having.** The console lets you do it in both orders, including the
-realistic one — add the ids to a form that already has answers in it, then
-rename.
+realistic one: add the ids to a form that already has answers, then rename.
 
 ### 3 · Fill it in, and watch every answer land
 
@@ -191,9 +190,9 @@ is exactly why they are the most useful thing this produces.
 
 Three stores, identical input, eight questions somebody would ask in the first
 week. The expected answers are computed in `src/measure/truth.ts` by looping
-over the fixture array in plain JavaScript — no query, no import from the store
-or from `src/answers/`, nothing that could be wrong in the same way the thing
-being measured is wrong. A test checks that file's imports for exactly that, and
+over the fixture array in plain JavaScript: no query, no import from the store
+or `src/answers/`, nothing that could be wrong in the same way the thing being
+measured is wrong. A test checks that file's imports for exactly that, and
 `npm run measure` exits non-zero if the flattened store with ids gets anything
 wrong.
 
@@ -205,15 +204,15 @@ comparison that only shows one side losing is an argument.
 
 What it gets wrong is worth reading in full:
 
-- **the mean weight** — it says `71.895 over 57`. The answer is
+- **the mean weight**: it says `71.895 over 57`. The answer is
   `75.255 over 120`. Three spellings of one question, and a query naming one of
   them. Nothing about the result says so.
-- **how many were offered a question** — it cannot say. A missing key means
+- **how many were offered a question**: it cannot say. A missing key means
   "did not tick it" and "was never asked", and there is nothing in the document
   to tell them apart. So eight people with coeliac disease gets divided by a
   hundred and twenty instead of by the sixty who were shown the question:
   thirteen per cent becomes seven.
-- **how many answers arrived for a question the form does not ask** — it cannot
+- **how many answers arrived for a question the form does not ask**: it cannot
   say. It keeps every one of them perfectly and has no idea any of them is a
   stray, because nothing there knows what the form asks.
 
@@ -237,8 +236,8 @@ A list of real limits, because a portfolio piece without one is a brochure.
 - **A matrix and a repeating group are kept whole, and that is a dead end.**
   They are stored as JSON with a note saying why, which is honest and is not a
   solution. A real system gives each of them a child table, and that is a
-  different project — a bigger one, and the reason this one draws the line where
-  it does rather than pretending the line is not there.
+  different, bigger project, and the reason this one draws the line where it
+  does rather than pretending the line is not there.
 - **The renaming rules are not the only possible rules.** `Peso (kg)` and
   `Peso kg` both become `Peso_kg` here. That is a choice, it is occasionally
   wrong, and when it is wrong it is wrong quietly. The collision report exists
@@ -286,14 +285,14 @@ happened.
 
 That original was a **SurveyJS** application: the client's staff built forms in
 the SurveyJS Creator, submissions arrived as SurveyJS JSON, and the reporting
-was the problem — the answers were documents and every question anybody asked
-was a table question. The work was the layer in between.
+was the problem, because the answers were documents and every question anybody
+asked was a table question. The work was the layer in between.
 
 **This repository contains no SurveyJS and no third-party code at all**, which
 is a deliberate difference rather than an omission. Vendoring a form library
 here would have added a hundred megabytes of dependencies and hidden the only
 part worth reading: the definition format in `src/fixtures/forms.ts` is a
-simplified one of my own, in the same shape — pages, elements, panels, choices —
+simplified one of my own, in the same shape (pages, elements, panels, choices),
 and the flattening does not know or care which library produced it. What the
 original did with a real SurveyJS schema, this does with a schema you can read
 in one sitting.
@@ -320,6 +319,6 @@ original system are included in this repository.
 
 ## Licence
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
 
 Developed by Riccardo Sapuppo.
