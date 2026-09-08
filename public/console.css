@@ -683,3 +683,40 @@ main {
 .foot p {
   margin: 0;
 }
+
+/* The signature, and the only link on this page that leaves it.
+ *
+ * Everything else here is either a control or an anchor to a section further
+ * down, so nothing has taught the reader what an outbound link looks like on
+ * this page — and the footer is 0.8rem of `--ink-faint`, which is the faintest
+ * ink the sheet has. Colour alone cannot carry it: the two working colours mean
+ * "this became a column" and "this could not", and a name is neither. So it
+ * takes no new token and steps up one rung, from the faint grey the rest of the
+ * footer is set in to the grey used for secondary text everywhere else —
+ * 6.38:1 on the paper in light and 8.22:1 in dark, against the 2.69:1 and
+ * 4.28:1 of the sentence above it. At this size the step alone is not a signal,
+ * so the underline is there before the pointer is, thin and dropped clear of
+ * the descenders. Hover goes to full ink; the focus ring is the 2px ink ring
+ * the buttons already wear, and the transition falls under the global
+ * `prefers-reduced-motion: reduce` rule at the top of this sheet. */
+.foot .by {
+  margin-top: 0.55rem;
+}
+
+.foot .by a {
+  color: var(--ink-soft);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+  border-radius: 3px;
+  transition: color 120ms ease;
+}
+
+.foot .by a:hover {
+  color: var(--ink);
+}
+
+.foot .by a:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
