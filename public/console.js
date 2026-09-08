@@ -35,6 +35,8 @@ const at = {
   landed: $('[data-landed] tbody'),
   landedTally: $('[data-landed-tally]'),
   aftermath: $('[data-aftermath]'),
+  awaiting: $('[data-awaiting]'),
+  landedBox: $('[data-landed-box]'),
   measure: $('[data-measure] tbody'),
   findings: $('[data-findings]'),
   claimFigure: $('[data-claim-figure]'),
@@ -458,6 +460,11 @@ function addAStray() {
 function drawLanded(said) {
   empty(at.landed);
 
+  // The heading with nothing under it was the old state of this panel, and it
+  // read as a table that had failed to load rather than as one waiting.
+  at.awaiting.hidden = true;
+  at.landedBox.hidden = false;
+
   for (const one of said.landed) {
     const row = text('tr');
     row.append(text('td', 'name', one.column_name));
@@ -588,6 +595,8 @@ at.reset.addEventListener('click', async () => {
   empty(at.landed);
   empty(at.aftermath);
   at.landedTally.textContent = '';
+  at.landedBox.hidden = true;
+  at.awaiting.hidden = false;
   extras = 0;
 });
 

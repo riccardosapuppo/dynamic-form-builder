@@ -482,6 +482,19 @@ main {
 
 /* ── the rendered form ───────────────────────────────────────────────────── */
 
+/*
+ * The form shows itself.
+ *
+ * It was capped at 30rem with a scrollbar, and every demonstration form in
+ * this project is 901 pixels tall: fifty-three per cent of each of them, every
+ * time, with the row at the cut clipped through the middle so it read as
+ * broken rather than as scrollable. The heading above says "12 questions, as
+ * this version asks them" and five were on screen.
+ *
+ * The cap is still here for a form nobody has written yet — a hundred
+ * questions would otherwise make this section a page of its own — but at a
+ * height the six that exist fit inside, so it never fires on anything real.
+ */
 .rendered {
   display: grid;
   gap: 0.85rem;
@@ -489,8 +502,25 @@ main {
   border: 1px solid var(--line);
   border-radius: 7px;
   background: var(--paper-sunk);
-  max-height: 30rem;
+  max-height: 72rem;
   overflow-y: auto;
+}
+
+/*
+ * Before anything has been submitted.
+ *
+ * The panel opposite held a table heading with nothing under it and a great
+ * deal of nothing below that, which reads as a thing that failed to load. It
+ * says what it is waiting for instead.
+ */
+.awaiting {
+  margin: 0;
+  padding: 1.4rem 1rem;
+  border: 1px dashed var(--line);
+  border-radius: 7px;
+  color: var(--ink-faint);
+  font-size: 0.88rem;
+  line-height: 1.5;
 }
 
 .question {
